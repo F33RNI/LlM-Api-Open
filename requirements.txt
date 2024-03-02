@@ -1,0 +1,6 @@
+selenium>=4.18.1
+undetected-chromedriver>=3.5.5
+beautifulsoup4>=4.12.3
+markdownify>=0.11.6
+Flask>=3.0.2
+pyinstaller==6.4.0

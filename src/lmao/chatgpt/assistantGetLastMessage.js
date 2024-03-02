@@ -1,0 +1,77 @@
+/**
+ * Copyright (c) 2024 Fern Lane
+ *
+ * This file is part of LlM-Api-Open (LMAO) project.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+/**
+ * Normalizes code blocks
+ * @param {*} element each child of assistant's response (recursively)
+ */
+function preformatRecursion(element) {
+
+    // Code block
+    if (element.tagName === "PRE") {
+        try {
+            // Extract rendered text
+            let codeText = element.innerText;
+
+            // Extract language and actual code from languageCopy codeactual code
+            const codeLanguage = codeText.split("Copy code")[0];
+            codeText = codeText.slice(codeLanguage.length + 9);
+            element.innerHTML = "<code lang='" + codeLanguage + "'>" + codeText + "</code>";
+        }
+
+        // For now, just ignore any errors
+        catch (e) { }
+    }
+
+    // Other element -> split into children and perform the same recursion
+    else
+        for (let child of element.children)
+            preformatRecursion(child);
+}
+
+try {
+    // Select all assistant messages
+    const assistantMessages = document.querySelectorAll("[data-message-author-role='assistant']");
+    if (assistantMessages.length > 0) {
+        // Get last one
+        const assistantMessage = assistantMessages[assistantMessages.length - 1];
+
+        // Extract message ID
+        const assistantMessageID = assistantMessage.getAttribute("data-message-id");
+
+        // Extract actual response parent
+        let responseContainer = assistantMessage.firstChild.cloneNode(true);
+
+        // result-thinking or result-streaming or markdown
+        const responseContainerClassName = responseContainer.className;
+
+        // Normalize each code block
+        for (let child of responseContainer.children)
+            preformatRecursion(child);
+
+        // message ID, result-thinking or result-streaming or markdown, response with normalized code blocks
+        return [assistantMessageID, responseContainerClassName, responseContainer.innerHTML];
+    }
+} catch (e) { }
+return null;

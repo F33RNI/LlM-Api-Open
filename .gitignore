@@ -1,0 +1,12 @@
+venv
+.venv
+.vscode
+.idea
+__pycache__
+build
+dist
+node_modules
+package.json
+package-lock.json
+ChatGPT_cookies.json
+test.py
