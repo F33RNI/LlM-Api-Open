@@ -16,11 +16,13 @@ jobs:
     steps:
     - name: Checkout repo
       uses: actions/checkout@v2
-    - name: Set env variables
+    - name: Set env variables (src)
       run: export PYTHONPATH=./src:$PYTHONPATH
+    - name: Set env variables (src/lmao)
       run: export PYTHONPATH=./src/lmao:$PYTHONPATH
     - name: Create venv
       run: python -m venv venv
+    - name: Activate venv
       run: source venv/bin/activate
     - name: Install requirements
       run: pip install -r requirements.txt
