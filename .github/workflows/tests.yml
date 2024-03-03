@@ -22,7 +22,15 @@ jobs:
       run: source venv/bin/activate
     - name: Install requirements
       run: pip install -r requirements.txt
-    - name: Set env variables
+    - name: Save old PYTHONPATH (for raw test)
+      run: echo "PYTHONPATH_OLD=$(echo $PYTHONPATH)" >> $GITHUB_ENV
+    - name: Set env variables (for raw test)
       run: echo "PYTHONPATH=$(echo ./src:./src/lmao:$PYTHONPATH)" >> $GITHUB_ENV
-    - name: Check project version
+    - name: Check project version (raw test)
       run: python -m main --version
+    - name: Restore PYTHONPATH
+      run: echo "PYTHONPATH=$(echo $PYTHONPATH_OLD)" >> $GITHUB_ENV
+    - name: Build using pyinstaller
+      run: pyinstaller lmao.spec
+    - name: Check project version (pyinstaller)
+      run: dist/lmao --version
