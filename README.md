@@ -64,8 +64,6 @@ There is 4 general ways to get LLM-API-Open
 
 #### ⬇️ Download cli version from **releases**
 
-> ⚠️ Not available for now. Will be added soon! Please be patient
-
 <https://github.com/F33RNI/LLM-API-Open/releases/latest>
 
 #### 🔨 Build cli version from source using PyInstaller
