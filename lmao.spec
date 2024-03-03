@@ -25,6 +25,7 @@ SOFTWARE.
 """
 
 import os
+import platform
 
 import PyInstaller.config
 
@@ -42,12 +43,7 @@ SOURCE_FILES = [
 _sources = [os.path.join("src", "lmao", source_file) for source_file in SOURCE_FILES]
 
 # Final name
-MATRIX_OS_NAME = os.environ.get("matrix.os")
-if MATRIX_OS_NAME:
-    COMPILE_NAME = f"lmao-{MATRIX_OS_NAME}"
-else:
-    COMPILE_NAME = "lmao"
-print(f"Name: {COMPILE_NAME}")
+COMPILE_NAME = f"lmao-{platform.platform()}".lower()
 
 # Files and folders to include inside builded binary
 INCLUDE_FILES = [

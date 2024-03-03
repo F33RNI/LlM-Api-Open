@@ -26,4 +26,5 @@ jobs:
     - run: python -m main --version
     - run: echo "PYTHONPATH=$(echo $PYTHONPATH_OLD)" >> $GITHUB_ENV
     - run: pyinstaller lmao.spec
+    - run: mv `ls -d dist/lmao*` dist/lmao
     - run: dist/lmao --version
