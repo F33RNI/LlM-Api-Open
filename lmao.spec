@@ -42,7 +42,12 @@ SOURCE_FILES = [
 _sources = [os.path.join("src", "lmao", source_file) for source_file in SOURCE_FILES]
 
 # Final name
-COMPILE_NAME = "lmao"
+MATRIX_OS_NAME = os.environ.get("matrix.os")
+if MATRIX_OS_NAME:
+    COMPILE_NAME = f"lmao-{MATRIX_OS_NAME}"
+else:
+    COMPILE_NAME = "lmao"
+print(f"Name: {COMPILE_NAME}")
 
 # Files and folders to include inside builded binary
 INCLUDE_FILES = [
