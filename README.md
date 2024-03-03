@@ -324,9 +324,6 @@ Retrieves the current status of all modules
         "status_name": "Module's status as a string",
         "error": "Empty or module's error message"
     },
-    {
-        ...
-    }
 ]
 ```
 
@@ -351,13 +348,13 @@ Initiates a request to the specified module and streams responses back
 
 **Request (POST):**
 
-```json
+```text
 {
     // For ChatGPT
     "chatgpt": {
         "prompt": "Text request to send to the module",
         "conversation_id": "Optional conversation ID (to continue existing chat) or empty for a new conversation",
-        "convert_to_markdown": true or false //(Optional flag for converting response to Markdown)
+        "convert_to_markdown": true or false (Optional flag for converting response to Markdown)
     }
 }
 ```
@@ -368,7 +365,7 @@ Initiates a request to the specified module and streams responses back
 
 > For ChatGPT, each JSON object has the following structure:
 
-```json
+```text
 {
     "finished": true if it's the last response false if not,
     "message_id": "ID of the current message (from assistant)",
@@ -425,10 +422,11 @@ Clears the module's conversation history
 
 **Request:**
 
+For ChatGPT:
+
 ```json
 {
-    // For ChatGPT
-    "module": {
+    "chatgpt": {
         "conversation_id": "ID of conversation to delete or empty to delete the top one"
     }
 }
