@@ -177,7 +177,7 @@ chatgpt > Hello! How can I assist you today?
 
 ----------
 
-## 🌐 API example using CURL
+## 🌐 API example
 
 ### Start server
 
