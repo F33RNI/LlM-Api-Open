@@ -14,27 +14,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v2
-    - name: Setup python
-      uses: actions/setup-python@v5
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v5
       with:
         python-version: '3.10'
-    - name: Create venv
-      run: python -m venv venv
-    - name: Activate venv
-      run: source venv/bin/activate
-    - name: Install requirements
-      run: pip install -r requirements.txt
-    - name: Save old PYTHONPATH (for raw test)
-      run: echo "PYTHONPATH_OLD=$(echo $PYTHONPATH)" >> $GITHUB_ENV
-    - name: Set env variables (for raw test)
-      run: echo "PYTHONPATH=$(echo ./src:./src/lmao:$PYTHONPATH)" >> $GITHUB_ENV
-    - name: Check project version (raw test)
-      run: python -m main --version
-    - name: Restore PYTHONPATH
-      run: echo "PYTHONPATH=$(echo $PYTHONPATH_OLD)" >> $GITHUB_ENV
-    - name: Build using pyinstaller
-      run: pyinstaller lmao.spec
-    - name: Check project version (pyinstaller)
-      run: dist/lmao --version
+    - run: python -m venv venv
+    - run: source venv/bin/activate
+    - run: pip install -r requirements.txt
+    - run: echo "PYTHONPATH_OLD=$(echo $PYTHONPATH)" >> $GITHUB_ENV
+    - run: echo "PYTHONPATH=$(echo ./src:./src/lmao:$PYTHONPATH)" >> $GITHUB_ENV
+    - run: python -m main --version
+    - run: echo "PYTHONPATH=$(echo $PYTHONPATH_OLD)" >> $GITHUB_ENV
+    - run: pyinstaller lmao.spec
+    - run: dist/lmao --version
