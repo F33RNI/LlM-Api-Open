@@ -43,7 +43,7 @@ SOURCE_FILES = [
 _sources = [os.path.join("src", "lmao", source_file) for source_file in SOURCE_FILES]
 
 # Final name
-COMPILE_NAME = f"lmao-{platform.platform()}".lower()
+COMPILE_NAME = f"lmao-{platform.system()}-{platform.machine()}".lower()
 
 # Files and folders to include inside builded binary
 INCLUDE_FILES = [
