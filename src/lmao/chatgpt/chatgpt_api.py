@@ -383,7 +383,7 @@ class ChatGPTApi:
                             and conversation_id_last != conversation_id_last_start
                         )
                     )
-                    and assistant_message_id is not assistant_message_id_start
+                    and assistant_message_id != assistant_message_id_start
                 ):
                     conversation_id = conversation_id_last
                     logging.info(f"New conversation ID: {conversation_id_last}")
