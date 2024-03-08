@@ -30,7 +30,7 @@
         "base_url": "https://chat.openai.com/",
 
         "__comment14__": "Start browser in headless mode (without GUI)",
-        "headless": false,
+        "headless": true,
 
         "__comment15__": "Chrome arguments",
         "chrome_options": [
