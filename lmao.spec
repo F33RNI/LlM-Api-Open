@@ -39,6 +39,7 @@ SOURCE_FILES = [
     "external_api.py",
     "_version.py",
     os.path.join("chatgpt", "chatgpt_api.py"),
+    os.path.join("chatgpt", "proxy_extension.py"),
 ]
 _sources = [os.path.join("src", "lmao", source_file) for source_file in SOURCE_FILES]
 

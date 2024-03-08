@@ -39,6 +39,8 @@ from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.common.exceptions import TimeoutException
 
+from lmao.chatgpt.proxy_extension import ProxyExtension
+
 # JS script that clicks on scroll to bottom button
 _SCROLL_TO_BOTTOM = """
 const scrollButtons = document.querySelectorAll("button.cursor-pointer.absolute");
@@ -210,11 +212,15 @@ class ChatGPTApi:
             chrome_options = undetected_chromedriver.ChromeOptions()
 
             # Proxy
-            proxy = self.config.get("proxy")
-            if proxy:
-                logging.info(f"Using proxy: {proxy}")
-                proxy = {"http": proxy, "https": proxy}
-                chrome_options.add_argument(f"proxy={proxy}")
+            if self.config.get("proxy_enabled"):
+                proxy_host = self.config.get("proxy_host")
+                proxy_port = int(self.config.get("proxy_port"))
+                proxy_user = self.config.get("proxy_user", "")
+                proxy_password = self.config.get("proxy_password", "")
+
+                logging.info(f"Using proxy: {proxy_user}:{proxy_password}@{proxy_host}:{proxy_port}")
+                proxy_extension = ProxyExtension(proxy_host, proxy_port, proxy_user, proxy_password)
+                chrome_options.add_argument(f"--load-extension={proxy_extension.directory}")
 
             # Enable old headless mode (or other one)
             headless_mode = self.config.get("headless_mode")
