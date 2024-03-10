@@ -23,10 +23,31 @@
  */
 
 /**
- * Normalizes code blocks
- * @param {*} element each child of assistant's response (recursively)
+ * Creates random string
+ * https://stackoverflow.com/a/1349426
+ * @param {*} length length of string
+ * @returns random string of length length
  */
-function preformatRecursion(element) {
+function makeid(length) {
+    let result = "";
+    const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    const charactersLength = characters.length;
+    let counter = 0;
+    while (counter < length) {
+        result += characters.charAt(Math.floor(Math.random() * charactersLength));
+        counter += 1;
+    }
+    return result;
+}
+
+
+/**
+ * Parses code blocks, replaces inner HTML with placeholder (ex. "{CODE_BLOCK_fKGojDdEJ62s28nE}")
+ * and appends their placeholders and content into codeBlocks
+ * @param {*} element each child of assistant's response (recursively)
+ * @param {*} codeBlocks dictionary for formatting {"placeholder": "code block content", ...}
+ */
+function preformatRecursion(element, codeBlocks) {
 
     // Code block
     if (element.tagName === "PRE") {
@@ -35,9 +56,19 @@ function preformatRecursion(element) {
             let codeText = element.innerText;
 
             // Extract language and actual code from languageCopy codeactual code
-            const codeLanguage = codeText.split("Copy code")[0];
+            const codeLanguage = codeText.split("Copy code")[0].replace("\n", "").replace("\\n", "");
+
+            // Extract actual code block content
             codeText = codeText.slice(codeLanguage.length + 9);
-            element.innerHTML = "<code lang='" + codeLanguage + "'>" + codeText + "</code>";
+
+            // Create placeholder CODE_BLOCK_random16symbols (ex. CODE_BLOCK_fKGojDdEJ62s28nE)
+            placeholder = "CODE_BLOCK_" + makeid(16) + "";
+
+            // Append for future formatting
+            codeBlocks[placeholder] = codeText;
+
+            // Replace content with placeholder
+            element.innerHTML = "<code lang='" + codeLanguage + "'>{" + placeholder + "}</code>";
         }
 
         // For now, just ignore any errors
@@ -47,7 +78,7 @@ function preformatRecursion(element) {
     // Other element -> split into children and perform the same recursion
     else
         for (let child of element.children)
-            preformatRecursion(child);
+            preformatRecursion(child, codeBlocks);
 }
 
 try {
@@ -66,12 +97,20 @@ try {
         // result-thinking or result-streaming or markdown
         const responseContainerClassName = responseContainer.className;
 
-        // Normalize each code block
-        for (let child of responseContainer.children)
-            preformatRecursion(child);
+        // {"code block placeholder": "code block content", ...}
+        const codeBlocks = {};
 
-        // message ID, result-thinking or result-streaming or markdown, response with normalized code blocks
-        return [assistantMessageID, responseContainerClassName, responseContainer.innerHTML];
+        // Parse each code block if now raw (arguments[0] true means raw output without parsed code blocks)
+        if (!arguments[0]) {
+            for (let child of responseContainer.children)
+                preformatRecursion(child, codeBlocks);
+        }
+
+        // message ID, result-thinking or result-streaming or markdown, parsed code blocks, code blocks content
+        return [assistantMessageID,
+            responseContainerClassName,
+            responseContainer.innerHTML,
+            codeBlocks];
     }
 } catch (e) { }
 return null;

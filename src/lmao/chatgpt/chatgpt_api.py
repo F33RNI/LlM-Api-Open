@@ -129,6 +129,12 @@ _REFRESHER_CYCLE = 1.0
 _RESTART_DELAY = 10
 
 
+# Class to keep placeholder https://stackoverflow.com/a/21754294
+class Default(dict):
+    def __missing__(self, key):
+        return key.join("{}")
+
+
 def _parse_browser_version_major(browser_executable_path: str) -> int or None:
     """Tries to determine browser version by running browser_executable_path --version
 
@@ -473,11 +479,11 @@ class ChatGPTApi:
             self._refresher_pause_resume(pause=False, reset_time=True)
             raise e
 
-    def response_read_stream(self, convert_to_markdown: bool) -> Generator[Tuple[bool, str, str, str]]:
+    def response_read_stream(self, convert_to_markdown: bool = True) -> Generator[Tuple[bool, str, str, str]]:
         """Reads response from ChatGPT
 
         Args:
-            convert_to_markdown (bool): True to convert result from HTML to Markdown
+            convert_to_markdown (bool, optional): True to convert result from HTML to Markdown. Defaults to True
 
         Raises:
             Exception: in case of no opened session, no valid assistant messages, timeout or any other error
@@ -496,10 +502,11 @@ class ChatGPTApi:
             finished = False
             while not finished:
                 # Retrieve message ID, class name and inner HTML
-                response = self.driver.execute_script(self._assistant_get_last_message_js)
+                raw = not convert_to_markdown
+                response = self.driver.execute_script(self._assistant_get_last_message_js, raw)
                 if response is None:
                     raise Exception("No valid assistant messages found")
-                message_id, class_name, response_text = response
+                message_id, class_name, response_text, code_blocks = response
 
                 # Check response type
                 if class_name.startswith("result-streaming"):
@@ -526,12 +533,17 @@ class ChatGPTApi:
                 # Convert to markdown
                 if convert_to_markdown:
                     try:
+                        # Convert to markdown with code blocks placeholders
                         response_text = markdownify(
                             response_text,
                             escape_asterisks=False,
                             escape_underscores=False,
                             code_language_callback=_code_language_callback,
                         )
+
+                        # Restore code blocks
+                        if code_blocks is not None and isinstance(code_blocks, dict):
+                            response_text = response_text.format_map(Default(code_blocks))
                     except Exception as e:
                         logging.error(f"Error converting HTML to Markdown! {e}")
 
