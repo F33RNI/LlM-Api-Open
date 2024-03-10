@@ -63,7 +63,7 @@ setup(
     long_description_content_type="text/markdown",
     py_modules=["llm-api-open"],
     classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         "Environment :: Console",
         "Framework :: Flask",
         "Intended Audience :: Developers",
