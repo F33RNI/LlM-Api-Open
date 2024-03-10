@@ -25,6 +25,7 @@ SOFTWARE.
 import json
 import logging
 import os
+import subprocess
 import time
 import threading
 from collections.abc import Generator
@@ -126,6 +127,33 @@ _REFRESHER_CYCLE = 1.0
 
 # Try to restart session in case of error during refreshing page
 _RESTART_DELAY = 10
+
+
+def _parse_browser_version_major(browser_executable_path: str) -> int or None:
+    """Tries to determine browser version by running browser_executable_path --version
+
+    Args:
+        browser_executable_path (str): path to browser executable
+
+    Returns:
+        int or None: parsed major version (ex. 122) or None in case of error
+    """
+    try:
+        command = [browser_executable_path, "--version"]
+        logging.info(f"Running {' '.join(command)}")
+        version_str = (
+            subprocess.run(command, stdout=subprocess.PIPE, timeout=10, check=True).stdout.decode("utf-8").split()
+        )
+        for version_str_part in version_str:
+            version_parts = version_str_part.split(".")
+            if len(version_parts) < 2:
+                continue
+            version = int(version_parts[0].strip())
+            logging.info(f"Detected major version: {version}")
+            return version
+    except Exception as e:
+        logging.error(f"Error trying to parse {browser_executable_path} version", exc_info=e)
+    return None
 
 
 class ChatGPTApi:
@@ -240,7 +268,36 @@ class ChatGPTApi:
             # Initialize chrome
             headless = self.config.get("headless")
             logging.info(f"Initializing driver{' in headless mode' if headless else ''}")
-            self.driver = undetected_chromedriver.Chrome(options=chrome_options, headless=headless, **kwargs)
+
+            # Find browser path
+            browser_executable_path = self.config.get("browser_executable_path")
+            if not self.config.get("browser_executable_path"):
+                browser_executable_path = undetected_chromedriver.find_chrome_executable()
+            logging.info(f"Browser executable path: {browser_executable_path}")
+
+            # Check
+            if not browser_executable_path:
+                raise Exception("Unable to find browser executable path. Please specify it manually")
+
+            # Find browser major version
+            version_main = self.config.get("version_main_manual")
+            if not version_main:
+                version_main = _parse_browser_version_major(browser_executable_path)
+
+            # Extract driver executable path from config
+            driver_executable_path = self.config.get("driver_executable_path")
+            if not driver_executable_path:
+                driver_executable_path = None
+
+            # Initialize browser
+            self.driver = undetected_chromedriver.Chrome(
+                browser_executable_path=browser_executable_path,
+                driver_executable_path=driver_executable_path,
+                version_main=version_main,
+                options=chrome_options,
+                headless=headless,
+                **kwargs,
+            )
 
             # Add cookies
             logging.info(f"Trying to add {len(self._cookies)} cookies")
