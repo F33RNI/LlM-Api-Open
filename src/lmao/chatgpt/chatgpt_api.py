@@ -99,6 +99,19 @@ if (toastRoots.length > 0 && toastRoots[0].innerText.includes("Unable to load"))
 return true;
 """
 
+# JS script that checks for Regenerate button due to "There was an error generating a response" and presses on it
+_CONVERSATION_ERROR_RESOLVE = """
+const buttons = document.getElementsByTagName("button");
+for (const button of buttons) {
+    if (button.innerText == "Regenerate") {
+        button.focus();
+        button.click();
+        return true;
+    }
+}
+return false;
+"""
+
 # JS script that cancels assistant response (clicks on Stop generating button)
 _RESPONSE_STOP = """
 const buttons = document.getElementsByTagName("button");
@@ -394,15 +407,26 @@ class ChatGPTApi:
             self._wait_for_prompt_textarea()
             self._scroll_to_bottom()
 
-            # Check for "Unable to load conversation ..."
+            # Check for "Unable to load conversation ..." and create a new one if not exists
             if not self.driver.execute_script(_CONVERSATION_EXISTS):
-                raise Exception(f"Conversation {conversation_id} doesn't exists")
+                logging.warning(f"Conversation {conversation_id} doesn't exists! Creating a new one")
+                conversation_id = None
+                logging.info(f"Loading {base_url}")
+                self.driver.get(base_url)
+                self._wait_for_prompt_textarea()
+                self._scroll_to_bottom()
 
             # Get last conversation id
             if not conversation_id:
                 conversation_id_last_start = self.driver.execute_script(_GET_LAST_CONVERSATION_ID)
             else:
                 conversation_id_last_start = conversation_id
+
+            # Check for response error
+            if self.driver.execute_script(_CONVERSATION_ERROR_RESOLVE):
+                logging.warning("Found Regenerate button (due to error?) Waiting for regeneration to finish")
+                time.sleep(1)
+                self._wait_for_send_button()
 
             # Get message ID of last assistant message
             assistant_message_id_start = self.driver.execute_script(_ASSISTANT_GET_LAST_MESSAGE_ID)
@@ -743,6 +767,18 @@ class ChatGPTApi:
         )
         time.sleep(1)
         logging.info("Page loaded")
+
+    def _wait_for_send_button(self) -> None:
+        """Waits for send-button to become available"""
+        logging.info("Waiting for send-button")
+        WebDriverWait(self.driver, _WAIT_TIMEOUT).until(
+            expected_conditions.presence_of_element_located((By.XPATH, "//*[@data-testid='send-button']"))
+        )
+        WebDriverWait(self.driver, _WAIT_TIMEOUT).until(
+            expected_conditions.element_to_be_clickable((By.XPATH, "//*[@data-testid='send-button']"))
+        )
+        time.sleep(1)
+        logging.info("send-button is available")
 
     def _scroll_to_bottom(self) -> None:
         """Scrolls to the bottom"""
