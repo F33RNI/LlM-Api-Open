@@ -318,6 +318,7 @@ class ChatGPTApi:
                 enable_cdp_events=True,
                 **kwargs,
             )
+            self.driver.set_page_load_timeout(_WAIT_TIMEOUT)
 
             # Add cookies
             logging.info(f"Trying to add {len(self._cookies)} cookies")
@@ -854,6 +855,7 @@ class ChatGPTApi:
                     # Refresh page
                     self._refresher_timer = time_current
                     logging.info("Refreshing current page")
+                    self.driver.set_page_load_timeout(_WAIT_TIMEOUT)
                     self.driver.refresh()
 
                     # Wait for page to load
