@@ -166,6 +166,7 @@ class ExternalAPI:
                             "prompt": "Text request",
                             "image": image as base64 to include into request,
                             "conversation_id": "empty string or existing conversation ID",
+                            "style": "creative" / "balanced" / "precise",
                             "convert_to_markdown": True or False
                         }
                     }

@@ -48,7 +48,9 @@ from lmao.ms_copilot.proxy_extension import ProxyExtension
 _GET_SEARCHBOX = """
 try {
     return document.querySelector("#b_sydConvCont > cib-serp").shadowRoot.querySelector("#cib-action-bar-main").shadowRoot.querySelector("div > div.main-container > div > div.input-row > cib-text-input").shadowRoot.querySelector("#searchbox");
-} catch (e) { }
+} catch (error) {
+    console.error(error);
+}
 return null;
 """
 
@@ -60,6 +62,12 @@ return document.querySelector("#b_sydConvCont > cib-serp").shadowRoot.querySelec
 # JS script that returns input element that accepts images
 _GET_IMAGE_INPUT = """
 return document.querySelector("#b_sydConvCont > cib-serp").shadowRoot.querySelector("#cib-action-bar-main").shadowRoot.querySelectorAll("#vs_fileinput")[0]
+"""
+
+# JS script that sets conversation style (WORKS ONLY ON NEW CONVERSATIONS). Pass 1 / 2 / 3 as argument
+# (1 - Creative, 2 - Balanced, 3 - Precise)
+_SET_STYLE = """
+document.querySelector("#b_sydConvCont > cib-serp").shadowRoot.querySelector("#cib-conversation-main").shadowRoot.querySelector("#cib-chat-main > div > cib-welcome-container").shadowRoot.querySelector("div.controls > cib-tone-selector").shadowRoot.querySelector("#tone-options > li:nth-child(" + arguments[0] + ") > button").click();
 """
 
 # JS script that returns "Stop responding" button
@@ -319,6 +327,7 @@ class MSCopilotApi:
         prompt: str,
         image: bytes or None = None,
         conversation_id: str or None = None,
+        style: str or None = None,
     ) -> str or None:
         """Sends prompt to MS Copilot
 
@@ -326,6 +335,7 @@ class MSCopilotApi:
             prompt (str): prompt text
             image (bytes or None, optional): image to attach to the prompt (will be saved into temp file)
             conversation_id (str or None, optional): existing conversation ID or None to create a new one
+            style (str or None, optional): "creative" / "balanced" / "precise" (works only with new conversations)
 
         Raises:
             Exception: in case of no session or timeout waiting for element or other error
@@ -369,12 +379,6 @@ class MSCopilotApi:
                 self._wait_for_searchbox()
                 conversation_id = None
 
-            # Generate new conversation ID if needed
-            self._conversation_new = False
-            if not conversation_id:
-                conversation_id = str(uuid.uuid4())
-                self._conversation_new = True
-
             # Wait for page to stop loading by counting messages
             logging.info("Waiting for page to stop loading")
             time_start = time.time()
@@ -389,6 +393,23 @@ class MSCopilotApi:
                 if bot_messages_len == bot_messages_len_start:
                     logging.info("Page loaded successfully")
                     break
+
+            # Set style
+            if style and not conversation_id:
+                logging.info(f"Changing conversation style to {style}")
+                if style == "creative":
+                    style_int = 1
+                elif style == "precise":
+                    style_int = 3
+                else:
+                    style_int = 2
+                self.driver.execute_script(_SET_STYLE, style_int)
+
+            # Generate new conversation ID if needed
+            self._conversation_new = False
+            if not conversation_id:
+                conversation_id = str(uuid.uuid4())
+                self._conversation_new = True
 
             # Save image
             image_tempfile_name = None

@@ -139,6 +139,7 @@ class ModuleWrapper:
                 "prompt": "Text request",
                 "image": image as bytes or as base64 string or None,
                 "conversation_id": "empty string or existing conversation ID",
+                "style": "creative" / "balanced" / "precise",
                 "convert_to_markdown": True or False
             }
 
@@ -180,6 +181,7 @@ class ModuleWrapper:
                     prompt=request.get("prompt"),
                     image=image,
                     conversation_id=request.get("conversation_id"),
+                    style=request.get("style"),
                 )
 
             # Re-yield response
