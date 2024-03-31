@@ -674,7 +674,7 @@ class MSCopilotApi:
                 time.sleep(1)
                 self._conversation_manage("rename", self._conversation_id_last, raise_on_error=False)
                 logging.info("Refreshing current page")
-                self.driver.get(self.config.get("base_url").strip())
+                self.driver.refresh()
                 self._wait_for_searchbox()
             self._conversation_new = False
 
@@ -899,7 +899,7 @@ class MSCopilotApi:
                     # Refresh page
                     self._refresher_timer = time_current
                     logging.info("Refreshing current page")
-                    self.driver.get(self.config.get("base_url").strip())
+                    self.driver.refresh()
 
                     # Wait for page to load
                     self._wait_for_searchbox()
