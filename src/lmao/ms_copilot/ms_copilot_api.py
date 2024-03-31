@@ -349,6 +349,8 @@ class MSCopilotApi:
         # Pause auto-refresher
         self._refresher_pause_resume(pause=True)
 
+        image_tempfile_name = None
+
         try:
             # Fix base url (remove ending slash)
             base_url = self.config.get("base_url").strip()
@@ -412,7 +414,6 @@ class MSCopilotApi:
                 self._conversation_new = True
 
             # Save image
-            image_tempfile_name = None
             if image is not None:
                 image_format = imghdr.what(None, h=image)
                 if not image_format:
@@ -699,8 +700,11 @@ class MSCopilotApi:
             # Resume refresher and reset it's timer
             self._refresher_pause_resume(pause=False, reset_time=True)
 
-    def session_close(self) -> None:
+    def session_close(self, from_refresher: bool = False) -> None:
         """Closes all browser instances
+
+        Args:
+            from_refresher (bool, optional): True to not stopping the refresher. Defaults to False
 
         Raises:
             Exception: no opened session or other exception during driver.quit()
@@ -709,12 +713,13 @@ class MSCopilotApi:
             raise Exception("No opened session! Please call session_start() first")
 
         # Stop refresher
-        self._refresher_running_flag = False
-        if self._refresher_thread is not None and self._refresher_thread.is_alive():
-            logging.info("Joining refresher thread")
-            self._refresher_thread.join()
-        self._refresher_thread = None
-        self._refresher_busy = False
+        if not from_refresher:
+            self._refresher_running_flag = False
+            if self._refresher_thread is not None and self._refresher_thread.is_alive():
+                logging.info("Joining refresher thread")
+                self._refresher_thread.join()
+            self._refresher_thread = None
+            self._refresher_busy = False
 
         # Save cookies before exit
         try:
@@ -797,13 +802,14 @@ class MSCopilotApi:
         return False
 
     def _wait_for_searchbox(self) -> None:
-        """Waits for searchbox textarea to become visible and 1 extra second to make sure it's loaded and clickable
+        """Waits for searchbox textarea to become visible and 1 extra second before and after to make sure it's loaded
 
         Raises:
             Exception: in case of timeout
         """
         logging.info("Waiting for page to load (waiting for searchbox textarea element)")
         time_started = time.time()
+        time.sleep(1)
         while True:
             if time.time() - time_started >= _WAIT_TIMEOUT:
                 raise Exception("Timeout waiting for searchbox textarea to load")
@@ -898,7 +904,7 @@ class MSCopilotApi:
                 # Close session
                 logging.warning("Trying to close session")
                 try:
-                    self.session_close()
+                    self.session_close(from_refresher=True)
                 except Exception as e_:
                     logging.error("Error closing session", exc_info=e_)
 

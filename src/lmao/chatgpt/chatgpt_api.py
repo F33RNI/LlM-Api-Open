@@ -689,8 +689,11 @@ class ChatGPTApi:
         finally:
             self._refresher_pause_resume(pause=False, reset_time=True)
 
-    def session_close(self) -> None:
+    def session_close(self, from_refresher: bool = False) -> None:
         """Closes all browser instances
+
+        Args:
+            from_refresher (bool, optional): True to not stopping the refresher. Defaults to False
 
         Raises:
             Exception: no opened session or other exception during driver.quit()
@@ -699,12 +702,13 @@ class ChatGPTApi:
             raise Exception("No opened session! Please call session_start() first")
 
         # Stop refresher
-        self._refresher_running_flag = False
-        if self._refresher_thread is not None and self._refresher_thread.is_alive():
-            logging.info("Joining refresher thread")
-            self._refresher_thread.join()
-        self._refresher_thread = None
-        self._refresher_busy = False
+        if not from_refresher:
+            self._refresher_running_flag = False
+            if self._refresher_thread is not None and self._refresher_thread.is_alive():
+                logging.info("Joining refresher thread")
+                self._refresher_thread.join()
+            self._refresher_thread = None
+            self._refresher_busy = False
 
         # Save cookies before exit
         try:
@@ -881,7 +885,7 @@ class ChatGPTApi:
                 # Close session
                 logging.warning("Trying to close session")
                 try:
-                    self.session_close()
+                    self.session_close(from_refresher=True)
                 except Exception as e_:
                     logging.error("Error closing session", exc_info=e_)
 
