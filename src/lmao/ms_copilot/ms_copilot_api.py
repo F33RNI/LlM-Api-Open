@@ -575,7 +575,8 @@ class MSCopilotApi:
                 # Check if finished
                 finished_ = self.driver.execute_script(self._conversation_parser_js, "finished")
                 if isinstance(finished_, dict) and "error" in finished_:
-                    raise Exception(finished_["error"])
+                    logging.warning(f"Error checking finished state: {finished_['error']}")
+                    finished_ = False
 
                 # Reset timer
                 if not finished_ and finished_timer != 0:
