@@ -50,6 +50,8 @@
         "--disable-popup-window",
         "--no-sandbox",
         "--auto-open-devtools-for-tabs",
+        "--dns-prefetch-disable",
+        "--disable-gpu",
         "--window-size=1920x960"
     ],
 
