@@ -95,6 +95,9 @@ _RESTART_DELAY = 10
 # TODO: track uploading spinner instead
 _IMAGE_PASTE_DELAY = 3
 
+# How long to wait after receiving message finish to make sure it's really finish (due to image generations)
+_WAIT_AFTER_FINISH = 3
+
 
 # Class to keep placeholder https://stackoverflow.com/a/21754294
 class Default(dict):
@@ -506,10 +509,8 @@ class MSCopilotApi:
                 logging.info("Switching to the default content")
                 self.driver.switch_to.default_content()
 
-            # Wait extra 5 seconds just in case to be able to catch moment of loading images
-            # TODO: remove this somehow
-            logging.info("Waiting 5 seconds")
-            time.sleep(5)
+            # Wait extra 500ms (to make sure everything is loaded properly)
+            time.sleep(0.5)
 
             # Save cookies
             self.cookies_save()
@@ -563,8 +564,9 @@ class MSCopilotApi:
             # Pause auto-refresher
             self._refresher_pause_resume(pause=True)
 
-            # generate until response finished
+            # Generate until response finished and wait extra _WAIT_AFTER_FINISH seconds
             finished = False
+            finished_timer = 0
             while not finished:
                 # Retrieve data as JSON
                 # See parseMessages() docs for more info
@@ -574,7 +576,24 @@ class MSCopilotApi:
                 finished_ = self.driver.execute_script(self._conversation_parser_js, "finished")
                 if isinstance(finished_, dict) and "error" in finished_:
                     raise Exception(finished_["error"])
-                finished = finished_
+
+                # Reset timer
+                if not finished_ and finished_timer != 0:
+                    finished_timer = 0
+
+                # Start timer
+                if finished_ and finished_timer == 0:
+                    logging.info(f"Received finished flag. Waiting extra {_WAIT_AFTER_FINISH}s")
+                    finished_timer = time.time()
+
+                # Done
+                if finished_ and time.time() - finished_timer >= _WAIT_AFTER_FINISH:
+                    logging.info(f"{_WAIT_AFTER_FINISH}s passed. Finishing")
+                    finished = True
+
+                # Not finished yet or we need to wait
+                else:
+                    finished = False
 
                 response_parsed = {"finished": finished, "conversation_id": self._conversation_id_last}
 
