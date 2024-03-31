@@ -37,7 +37,6 @@ SOURCE_FILES = [
     "main.py",
     "module_wrapper.py",
     "external_api.py",
-    "proxy_extension.py",
     "_version.py",
     os.path.join("chatgpt", "chatgpt_api.py"),
     os.path.join("ms_copilot", "ms_copilot_api.py"),
