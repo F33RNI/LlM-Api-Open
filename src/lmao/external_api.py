@@ -26,7 +26,7 @@ import atexit
 import json
 import logging
 import threading
-from typing import Dict, List, Literal
+from typing import Dict, Literal
 
 from flask import Flask, request, Response, jsonify
 
@@ -41,8 +41,8 @@ from lmao.module_wrapper import (
 
 
 class ExternalAPI:
-    def __init__(self, configs: List[Dict]):
-        self.configs = configs
+    def __init__(self, config: Dict):
+        self.config = config
 
         self.app = Flask(__name__)
         self.lock = threading.Lock()
@@ -79,9 +79,7 @@ class ExternalAPI:
                 # Initialize class object
                 if self.modules.get(module_name) is None:
                     # Read and check config
-                    module_config = next(
-                        (config for config in self.configs if config.get("module") == module_name), None
-                    )
+                    module_config = config.get(module_name)
                     if module_config is None:
                         logging.error(f"No config for {module_name}")
                         return (jsonify({"error": f"No config for {module_name}"}), 500)
@@ -154,21 +152,38 @@ class ExternalAPI:
             Please call /api/status to check if module is initialized and not busy BEFORE calling /api/ask
 
             Request:
-                {
-                    // For ChatGPT
-                    "chatgpt": {
-                        "prompt": "Text request to send to the module",
-                        "conversation_id": "Optional conversation ID (to continue existing chat) or empty for a new conversation",
-                        "convert_to_markdown": true or false //(Optional flag for converting response to Markdown)
+                For ChatGPT:
+                    {
+                        "chatgpt": {
+                            "prompt": "Text request to send to the module",
+                            "conversation_id": "Optional conversation ID (to continue existing chat) or empty for a new conversation",
+                            "convert_to_markdown": true or false //(Optional flag for converting response to Markdown)
+                        }
                     }
-                }
+                For Microsoft Copilot:
+                    {
+                        "ms_copilot": {
+                            "prompt": "Text request",
+                            "image": image as base64 to include into request,
+                            "conversation_id": "empty string or existing conversation ID",
+                            "convert_to_markdown": True or False
+                        }
+                    }
 
             Yields: A stream of JSON objects containing module responses.
-            For ChatGPT, Each JSON object has the following structure:
+            For ChatGPT, each JSON object has the following structure:
                 {
                     "finished": "True if it's the last response, False if not",
                     "message_id": "ID of the current message (from assistant)",
                     "response": "Actual response as text"
+                }
+            For Microsoft Copilot, each JSON object has the following structure:
+                {
+                    "finished": True if it's the last response, False if not,
+                    "response": "response as text (or meta response)",
+                    "images": ["array of image URL's"],
+                    "caption": "images caption",
+                    "suggestions": ["array of suggestions of the requests"]
                 }
 
             Returns: {"error": "Error message"}, 500 in case of error

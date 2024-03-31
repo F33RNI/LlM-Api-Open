@@ -22,12 +22,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+import base64
 import logging
 import threading
 from collections.abc import Generator
 from typing import Dict
 
 from lmao.chatgpt.chatgpt_api import ChatGPTApi
+from lmao.ms_copilot.ms_copilot_api import MSCopilotApi
 
 STATUS_NOT_INITIALIZED = 0
 STATUS_INITIALIZING = 1
@@ -38,7 +40,7 @@ STATUS_FAILED = -1
 
 STATUS_TO_STR = ["Not initialized", "Initializing", "Idle", "Busy", "Stopping", "Failed"]
 
-MODULES = ["chatgpt"]
+MODULES = ["chatgpt", "ms_copilot"]
 
 # TODO: Implement multiprocessing instead of threading
 
@@ -66,6 +68,8 @@ class ModuleWrapper:
         logging.info(f"Initializing {name} class object")
         if self.name == "chatgpt":
             self._module_class = ChatGPTApi(self.config)
+        elif self.name == "ms_copilot":
+            self._module_class = MSCopilotApi(self.config)
 
     def initialize(self, blocking: bool = False, **kwargs) -> None:
         """Starts module's session without raising any error
@@ -131,6 +135,12 @@ class ModuleWrapper:
                 "conversation_id": "empty string or existing conversation ID",
                 "convert_to_markdown": True or False
             }
+            For ms_copilot: {
+                "prompt": "Text request",
+                "image": image as bytes or as base64 string or None,
+                "conversation_id": "empty string or existing conversation ID",
+                "convert_to_markdown": True or False
+            }
 
         Raises:
             Exception: in case of prompt_send() or response_read_stream() error
@@ -143,31 +153,42 @@ class ModuleWrapper:
                 "message_id": "ID of current message (from assistant)",
                 "response": "Actual response as text"
             }
+            For ms_copilot: {
+                "finished": True if it's the last response, False if not,
+                "response": "response as text (or meta response)",
+                "images": ["array of image URL's"],
+                "caption": "images caption",
+                "suggestions": ["array of suggestions of the requests"]
+            }
         """
         self.status = STATUS_BUSY
         try:
+            # Parse image and convert into bytes
+            image = request.get("image")
+            if image is not None:
+                if isinstance(image, str):
+                    logging.info("Decoding image from base64")
+                    image = base64.b64decode(image)
+
+            # Send request
             if self.name == "chatgpt":
-                # Send request
-                self._module_class.prompt_send(request.get("prompt"), request.get("conversation_id"))
+                self._module_class.prompt_send(
+                    prompt=request.get("prompt"), conversation_id=request.get("conversation_id")
+                )
+            elif self.name == "ms_copilot":
+                self._module_class.prompt_send(
+                    prompt=request.get("prompt"),
+                    image=image,
+                    conversation_id=request.get("conversation_id"),
+                )
 
-                # Yield response
-                for finished, conversation_id, message_id, response in self._module_class.response_read_stream(
-                    request.get("convert_to_markdown")
-                ):
-                    yield {
-                        "finished": finished,
-                        "conversation_id": conversation_id,
-                        "message_id": message_id,
-                        "response": response,
-                    }
+            # Re-yield response
+            for response in self._module_class.response_read_stream(request.get("convert_to_markdown")):
+                yield response
 
-                # Reset status
-                self.status = STATUS_IDLE
-
-        # Clear status back to IDLE and re-raise exception
-        except Exception as e:
+        # Clear status back to IDLE
+        finally:
             self.status = STATUS_IDLE
-            raise e
 
     def response_stop(self) -> None:
         """Wrapper for response_stop() function
@@ -192,7 +213,7 @@ class ModuleWrapper:
 
         Args:
             conversation (Dict): conversation data to delete
-            For chatgpt: {
+            For chatgpt / ms_copilot: {
                 "conversation_id": "ID of conversation to delete (in lower case)"
             }
 
@@ -201,13 +222,8 @@ class ModuleWrapper:
         """
         self.status = STATUS_BUSY
         try:
-            if self.name == "chatgpt":
-                self._module_class.conversation_delete(conversation.get("conversation_id"))
+            self._module_class.conversation_delete(conversation.get("conversation_id"))
 
-            # Reset status
+        # Clear status back to IDLE
+        finally:
             self.status = STATUS_IDLE
-
-        # Clear status back to IDLE and re-raise exception
-        except Exception as e:
-            self.status = STATUS_IDLE
-            raise e

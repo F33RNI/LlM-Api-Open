@@ -32,8 +32,8 @@ from lmao._version import __version__
 from lmao.module_wrapper import MODULES, ModuleWrapper
 from lmao.external_api import ExternalAPI
 
-# Default config file path
-_CONFIG_FILE = "config.json"
+# Default configs directory path
+_CONFIGS_DIR = "configs"
 
 # Default server host
 _HOST_DEFAULT = "localhost"
@@ -69,14 +69,12 @@ def parse_args() -> argparse.Namespace:
     options:
     -h, --help            show this help message and exit
     -v, --version         show program's version number and exit
-    -c CONFIG, --config CONFIG
-                            path to config.json file (Default: config.json)
-    -t TEST, --test TEST  module name to test in cli instead of starting API server (eg.
-                            --test=chatgpt)
+    -c CONFIGS, --configs CONFIGS
+                            path to configs directory with each module config file (Default: configs)
+    -t TEST, --test TEST  module name to test in cli instead of starting API server (eg. --test=chatgpt)
     -i IP, --ip IP        API server Host (IP) (Default: localhost)
     -p PORT, --port PORT  API server port (Default: 1312)
-    --no-logging-init     specify to bypass logging initialization (will be set automatically when
-                            using --test)
+    --no-logging-init     specify to bypass logging initialization (will be set automatically when using --test)
 
     Returns:
         argparse.Namespace: parsed arguments
@@ -97,11 +95,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("-v", "--version", action="version", version=__version__)
     parser.add_argument(
         "-c",
-        "--config",
+        "--configs",
         type=str,
-        default=os.getenv("CONFIG", _CONFIG_FILE),
+        default=os.getenv("CONFIGS", _CONFIGS_DIR),
         required=False,
-        help=f"path to config.json file (Default: {os.getenv('CONFIG', _CONFIG_FILE)})",
+        help=f"path to configs directory with each module config file (Default: {os.getenv('CONFIG', _CONFIGS_DIR)})",
     )
     parser.add_argument(
         "-t",
@@ -145,10 +143,20 @@ def main():
     if not args.no_logging_init and not args.test:
         logging_setup()
 
-    # Load config
-    logging.info(f"Loading {args.config}")
-    with open(args.config, "r", encoding="utf-8") as file:
-        config = json.loads(file.read())
+    # Load configs
+    logging.info(f"Loading config files from {args.configs} directory")
+    config = {}
+    for file in os.listdir(args.configs):
+        # Parse only .json files
+        if file.lower().endswith(".json"):
+            # Extract name of module
+            module_name_from_file = os.path.splitext(os.path.basename(file))[0]
+
+            # Parse and merge
+            logging.info(f"Adding config of {module_name_from_file} module")
+            with open(os.path.join(args.configs, file), "r", encoding="utf-8") as file_:
+                module_config = json.loads(file_.read())
+            config[module_name_from_file] = module_config
 
     # --test mode
     if args.test:
@@ -159,7 +167,7 @@ def main():
         # Initialize
         try:
             logging.info("Initializing module")
-            module_config = next((config for config in config if config.get("module") == args.test), None)
+            module_config = config.get(args.test)
             module = ModuleWrapper(args.test, module_config)
             module.initialize(blocking=True)
             if module.error:

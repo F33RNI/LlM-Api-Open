@@ -16,9 +16,11 @@
 
 ----------
 
-## 🚧 LLM-API-Open is under heavy development
+## 🚧 LLM-API-Open is development
 
-> 😔 Currently, LLM-API-Open has **only 1 module**: ChatGPT
+> Due to my studies, I don't have much time to work on the project 😔
+>
+> Currently, LLM-API-Open has only **2** modules: **ChatGPT** and **Microsoft Copilot**
 >
 > 📈 But it is possible to add other popular online LLMs *(You can wait, or make a pull-request yourself)*
 >
@@ -98,9 +100,9 @@ python -m main --help
 
 ### 🔧 2. Configure LLM-API-Open
 
-1. Download `config.json` from this repo
-2. Open it in any editor and change the config of the modules you'll use
-3. Specify path to `config.json` with `-c path/to/config.json` argument
+1. Download `configs` directory from this repo
+2. Open `.json` files of modules you need in any editor and change it as you need
+3. Specify path to `configs` directory with `-c path/to/configs` argument
 
 ----------
 
@@ -115,10 +117,9 @@ from lmao.module_wrapper import ModuleWrapper
 # Initialize logging in a simplest way
 logging.basicConfig(level=logging.INFO)
 
-# Load and parse config
-with open("config.json", "r", encoding="utf-8") as file:
-    config = json.loads(file.read())
-module_config = next((module_config for module_config in config if module_config.get("module") == "chatgpt"), None)
+# Load config
+with open("path/to/configs/chatgpt.json", "r", encoding="utf-8") as file:
+    module_config = json.loads(file.read())
 
 # Initialize module
 module = ModuleWrapper("chatgpt", module_config)
@@ -151,14 +152,12 @@ Unofficial open APIs for popular LLMs with self-hosted redirect capability
 options:
   -h, --help            show this help message and exit
   -v, --version         show program's version number and exit
-  -c CONFIG, --config CONFIG
-                        path to config.json file (Default: config.json)
-  -t TEST, --test TEST  module name to test in cli instead of starting API server (eg.
-                        --test=chatgpt)
+  -c CONFIGS, --configs CONFIGS
+                        path to configs directory with each module config file (Default: configs)
+  -t TEST, --test TEST  module name to test in cli instead of starting API server (eg. --test=chatgpt)
   -i IP, --ip IP        API server Host (IP) (Default: localhost)
   -p PORT, --port PORT  API server port (Default: 1312)
-  --no-logging-init     specify to bypass logging initialization (will be set automatically when
-                        using --test)
+  --no-logging-init     specify to bypass logging initialization (will be set automatically when using --test)
 
 examples:
   lmao --test=chatgpt
@@ -182,16 +181,18 @@ chatgpt > Hello! How can I assist you today?
 ### Start server
 
 ```shell
-$ lmao --config "config.json" --ip "0.0.0.0" --port "1312" 
-2024-03-02 13:43:52 INFO     Logging setup is complete
-2024-03-02 13:43:52 INFO     Loading config.json
+$ lmao --configs "configs" --ip "0.0.0.0" --port "1312" 
+2024-03-30 23:14:50 INFO     Logging setup is complete
+2024-03-30 23:14:50 INFO     Loading config files from configs directory
+2024-03-30 23:14:50 INFO     Adding config of ms_copilot module
+2024-03-30 23:14:50 INFO     Adding config of chatgpt module
  * Serving Flask app 'lmao.external_api'
  * Debug mode: off
-2024-03-02 13:43:52 INFO     WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+2024-03-30 23:14:50 INFO     WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
  * Running on all addresses (0.0.0.0)
  * Running on http://127.0.0.1:1312
  * Running on http://192.168.0.3:1312
-2024-03-02 13:43:52 INFO     Press CTRL+C to quit
+2024-03-30 23:14:50 INFO     Press CTRL+C to quit
 ...
 ```
 
@@ -346,13 +347,27 @@ Initiates a request to the specified module and streams responses back
 
 **Request (POST):**
 
+> For **ChatGPT**:
+
 ```text
 {
-    // For ChatGPT
     "chatgpt": {
         "prompt": "Text request to send to the module",
         "conversation_id": "Optional conversation ID (to continue existing chat) or empty for a new conversation",
-        "convert_to_markdown": true or false (Optional flag for converting response to Markdown)
+        "convert_to_markdown": true or false //(Optional flag for converting response to Markdown)
+    }
+}
+```
+
+> For **Microsoft Copilot**:
+
+```text
+{
+    "ms_copilot": {
+        "prompt": "Text request",
+        "image": image as base64 to include into request,
+        "conversation_id": "empty string or existing conversation ID",
+        "convert_to_markdown": True or False
     }
 }
 ```
@@ -361,13 +376,25 @@ Initiates a request to the specified module and streams responses back
 
 - ✔️ A stream of JSON objects containing module responses
 
-> For ChatGPT, each JSON object has the following structure:
+> For **ChatGPT**, each JSON object has the following structure:
 
 ```text
 {
-    "finished": true if it's the last response false if not,
+    "finished": "True if it's the last response, False if not",
     "message_id": "ID of the current message (from assistant)",
     "response": "Actual response as text"
+}
+```
+
+> For **Microsoft Copilot**, each JSON object has the following structure:
+
+```text
+{
+    "finished": True if it's the last response, False if not,
+    "response": "response as text (or meta response)",
+    "images": ["array of image URL's"],
+    "caption": "images caption",
+    "suggestions": ["array of suggestions of the requests"]
 }
 ```
 

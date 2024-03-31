@@ -22,115 +22,57 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+import imghdr
 import json
 import logging
 import os
 import subprocess
+import tempfile
 import time
 import threading
 from collections.abc import Generator
 from typing import Dict
+import uuid
 
 from markdownify import markdownify
 import undetected_chromedriver
-from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.common.exceptions import TimeoutException
 
 from proxy_extension import ProxyExtension
 
-# JS script that clicks on scroll to bottom button
-_SCROLL_TO_BOTTOM = """
-const scrollButtons = document.querySelectorAll("button.cursor-pointer.absolute");
-if (scrollButtons.length > 0)
-    scrollButtons[0].click();
-"""
 
-# JS script to paste text into textarea
-_TYPE_INTO_TEXTAREA = """
-let element = arguments[0], text = arguments[1];
-if (!("value" in element))
-    throw new Error("Expected an <input> or <textarea>");
-element.focus();
-element.value = text;
-element.innerHTML = text;
-element.dispatchEvent(new Event("change"));
-"""
-
-# JS script to move cursor to the end of textarea
-_MOVE_CURSOR_TEXTAREA = """
-let element = arguments[0];
-if (!("value" in element))
-    throw new Error("Expected an <input> or <textarea>");
-element.selectionStart = element.value.length;
-"""
-
-# JS script to get last assistant message ID
-_ASSISTANT_GET_LAST_MESSAGE_ID = """
+# JS script that returns searchbox element or null without raising any error
+_GET_SEARCHBOX = """
 try {
-    const assistantMessages = document.querySelectorAll("[data-message-author-role='assistant']");
-    if (assistantMessages.length > 0)
-        return [...assistantMessages].at(-1).getAttribute("data-message-id");
+    return document.querySelector("#b_sydConvCont > cib-serp").shadowRoot.querySelector("#cib-action-bar-main").shadowRoot.querySelector("div > div.main-container > div > div.input-row > cib-text-input").shadowRoot.querySelector("#searchbox");
 } catch (e) { }
 return null;
 """
 
-# JS script to get last conversation ID
-_GET_LAST_CONVERSATION_ID = """
-try {
-    const conversationsGroups = document.getElementsByTagName("ol");
-    if (conversationsGroups.length > 0) {
-        conversationsGroup = [...document.getElementsByTagName("ol")].at(0);
-        conversationID = [...conversationsGroup.firstChild.getElementsByTagName("a")[0].href.split("c/")].at(-1);
-        return conversationID;
-    }
-} catch (e) { }
-return null;
+# JS script that returns submit button
+_GET_SUBMIT_BUTTON = """
+return document.querySelector("#b_sydConvCont > cib-serp").shadowRoot.querySelector("#cib-action-bar-main").shadowRoot.querySelector("div > div.main-container > div > div.bottom-controls > div.bottom-right-controls > div.control.submit > button");
 """
 
-# JS script that checks if current conversation exists or not by checking for toast message
-_CONVERSATION_EXISTS = """
-const toastRoots = document.getElementsByClassName("toast-root");
-if (toastRoots.length > 0 && toastRoots[0].innerText.includes("Unable to load"))
-    return false;
-return true;
+# JS script that returns input element that accepts images
+_GET_IMAGE_INPUT = """
+return document.querySelector("#b_sydConvCont > cib-serp").shadowRoot.querySelector("#cib-action-bar-main").shadowRoot.querySelectorAll("#vs_fileinput")[0]
 """
 
-# JS script that checks for Regenerate button due to "There was an error generating a response" and presses on it
-_CONVERSATION_ERROR_RESOLVE = """
-const buttons = document.getElementsByTagName("button");
-for (const button of buttons) {
-    if (button.innerText == "Regenerate") {
-        button.focus();
-        button.click();
-        return true;
-    }
-}
-return false;
+# JS script that returns "Stop responding" button
+_STOP_RESPONDING = """
+return document.querySelector("#b_sydConvCont > cib-serp").shadowRoot.querySelector("#cib-action-bar-main").shadowRoot.querySelector("div > cib-typing-indicator").shadowRoot.querySelector("#stop-responding-button");
 """
-
-# JS script that cancels assistant response (clicks on Stop generating button)
-_RESPONSE_STOP = """
-const buttons = document.getElementsByTagName("button");
-for (const button of buttons) {
-    if (button.hasAttribute("aria-label") && button.getAttribute("aria-label") === "Stop generating")
-        button.click();
-}
-"""
-
 
 # "large" JS files
-_ASSISTANT_GET_LAST_MESSAGE_JS = os.path.abspath(os.path.join(os.path.dirname(__file__), "assistantGetLastMessage.js"))
-_CONVERSATION_SEARCH_JS = os.path.abspath(os.path.join(os.path.dirname(__file__), "conversationSearch.js"))
+_CONVERSATION_MANAGE_JS = os.path.abspath(os.path.join(os.path.dirname(__file__), "conversationManage.js"))
+_CONVERSATION_PARSER_JS = os.path.abspath(os.path.join(os.path.dirname(__file__), "conversationParser.js"))
 
 # Maximum time to wait elements for load
 _WAIT_TIMEOUT = 60
-
-# Try to find start of response each >=100ms
-_WAITER_CYCLE = 0.1
 
 # Yield response each >=100ms
 _STREAM_READER_CYCLE = 0.1
@@ -140,6 +82,10 @@ _REFRESHER_CYCLE = 1.0
 
 # Try to restart session in case of error during refreshing page
 _RESTART_DELAY = 10
+
+# How long to wait after pasting image (to make sure it's uploaded)
+# TODO: track uploading spinner instead
+_IMAGE_PASTE_DELAY = 3
 
 
 # Class to keep placeholder https://stackoverflow.com/a/21754294
@@ -175,17 +121,17 @@ def _parse_browser_version_major(browser_executable_path: str) -> int or None:
     return None
 
 
-class ChatGPTApi:
+class MSCopilotApi:
     def __init__(self, config: Dict) -> None:
-        """Initializes ChatGpt module
+        """Initializes MS Copilot module
 
         Args:
             config (Dict): module config
             Example:
             {
-                "cookies_file": "ChatGPT_cookies.json",
+                "cookies_file": "MS_Copilot_cookies.json",
                 "proxy": "",
-                "base_url": "https://chat.openai.com/",
+                "base_url": "https://copilot.microsoft.com/",
                 "headless": true,
                 "chrome_options": [
                     "--disable-infobars",
@@ -211,6 +157,7 @@ class ChatGPTApi:
         self._cookies = []
 
         self._conversation_id_last = ""
+        self._conversation_new = False
 
         self._refresher_running_flag = None
         self._refresher_dont_refresh_flag = False
@@ -219,13 +166,13 @@ class ChatGPTApi:
         self._refresher_busy = False
 
         # Load "large" JS scripts
-        logging.info(f"Loading {_ASSISTANT_GET_LAST_MESSAGE_JS}")
-        with open(_ASSISTANT_GET_LAST_MESSAGE_JS, "r", encoding="utf-8") as file:
-            self._assistant_get_last_message_js = file.read()
+        logging.info(f"Loading {_CONVERSATION_MANAGE_JS}")
+        with open(_CONVERSATION_MANAGE_JS, "r", encoding="utf-8") as file:
+            self._conversation_manage_js = file.read()
 
-        logging.info(f"Loading {_CONVERSATION_SEARCH_JS}")
-        with open(_CONVERSATION_SEARCH_JS, "r", encoding="utf-8") as file:
-            self._conversation_search_js = file.read()
+        logging.info(f"Loading {_CONVERSATION_PARSER_JS}")
+        with open(_CONVERSATION_PARSER_JS, "r", encoding="utf-8") as file:
+            self._conversation_parser_js = file.read()
 
     def is_initialized(self) -> bool:
         """
@@ -235,7 +182,7 @@ class ChatGPTApi:
         return self.driver is not None
 
     def session_start(self, **kwargs) -> None:
-        """Starts ChatGPT handler (opens browser, logs into account and starts auto-refresher)
+        """Starts MS Copilot handler (opens browser, logs into account and starts auto-refresher)
 
         Raises:
             Exception: in case of existing session or any other error including timeout waiting for element to load
@@ -341,10 +288,7 @@ class ChatGPTApi:
             self.driver.get(base_url)
 
             # Wait for textarea (New chat)
-            self._wait_for_prompt_textarea()
-
-            # Prevent "element not interactable" error
-            self._remove_new_chat_button()
+            self._wait_for_searchbox()
 
             # Save cookies before starting refresher
             self.cookies_save()
@@ -370,18 +314,24 @@ class ChatGPTApi:
             # Raise exception after
             raise e
 
-    def prompt_send(self, prompt: str, conversation_id: str or None = None) -> str or None:
-        """Sends prompt to ChatGPT
+    def prompt_send(
+        self,
+        prompt: str,
+        image: bytes or None = None,
+        conversation_id: str or None = None,
+    ) -> str or None:
+        """Sends prompt to MS Copilot
 
         Args:
             prompt (str): prompt text
+            image (bytes or None, optional): image to attach to the prompt (will be saved into temp file)
             conversation_id (str or None, optional): existing conversation ID or None to create a new one
 
         Raises:
             Exception: in case of no session or timeout waiting for element or other error
 
         Returns:
-            str or None: conversation ID or None if something goes wrong (most likely it'll just return an exception)
+            str or None: conversation ID
         """
         if self.driver is None:
             raise Exception("No opened session! Please call session_start() first")
@@ -395,96 +345,149 @@ class ChatGPTApi:
             while base_url.endswith("/"):
                 base_url = base_url[:-1]
 
-            # Load conversation or create a new one
+            # Load initial page
+            base_url = self.config.get("base_url")
+            logging.info(f"Loading {base_url}")
+            self.driver.get(base_url)
+
+            # Wait for textarea (New chat)
+            self._wait_for_searchbox()
+
+            # Try to load conversation
             if conversation_id:
-                conversation_url = f"{base_url}/c/{conversation_id.strip()}"
-            else:
-                conversation_url = base_url
-            logging.info(f"Loading {conversation_url}")
-            self.driver.get(conversation_url)
+                if self._conversation_manage("load", conversation_id, raise_on_error=False):
+                    self._wait_for_searchbox()
+                else:
+                    logging.warning(f"Unable to load conversation {conversation_id}. Creating a new one")
+                    conversation_id = None
 
-            # Wait and scroll after
-            self._wait_for_prompt_textarea()
-            self._scroll_to_bottom()
-
-            # Check for "Unable to load conversation ..." and create a new one if not exists
-            if not self.driver.execute_script(_CONVERSATION_EXISTS):
-                logging.warning(f"Conversation {conversation_id} doesn't exists! Creating a new one")
-                conversation_id = None
-                logging.info(f"Loading {base_url}")
+            # Check for disabled searchbox (usually caused by "Sorry, this conversation has reached its limit...")
+            if not self.driver.execute_script(_GET_SEARCHBOX).is_enabled:
+                logging.warning(f"Found disabled searchbox in conversation {conversation_id}. Limit reached?")
+                logging.info(f"Creating a new conversation. Loading {base_url}")
                 self.driver.get(base_url)
-                self._wait_for_prompt_textarea()
-                self._scroll_to_bottom()
+                self._wait_for_searchbox()
+                conversation_id = None
 
-            # Get last conversation id
+            # Generate new conversation ID if needed
+            self._conversation_new = False
             if not conversation_id:
-                conversation_id_last_start = self.driver.execute_script(_GET_LAST_CONVERSATION_ID)
-            else:
-                conversation_id_last_start = conversation_id
+                conversation_id = str(uuid.uuid4())
+                self._conversation_new = True
 
-            # Check for response error
-            if self.driver.execute_script(_CONVERSATION_ERROR_RESOLVE):
-                logging.warning("Found Regenerate button (due to error?) Waiting for regeneration to finish")
-                time.sleep(1)
-                self._wait_for_send_button()
-
-            # Get message ID of last assistant message
-            assistant_message_id_start = self.driver.execute_script(_ASSISTANT_GET_LAST_MESSAGE_ID)
-            if assistant_message_id_start:
-                logging.info(f"Last assistant message ID: {assistant_message_id_start}")
-
-            # Get prompt area
-            prompt_textarea = self.driver.find_element(By.ID, "prompt-textarea")
-
-            # Paste -> click -> move cursor to the end -> add space -> erase space
-            logging.info("Pasting prompt into textarea")
-            self.driver.execute_script(_TYPE_INTO_TEXTAREA, prompt_textarea, prompt)
-            prompt_textarea.click()
-            self.driver.execute_script(_MOVE_CURSOR_TEXTAREA, prompt_textarea)
-            prompt_textarea.send_keys(Keys.SPACE)
-            prompt_textarea.send_keys(Keys.BACKSPACE)
-
-            # Click send prompt button
-            logging.info("Clinking on send-button")
-            self.driver.find_element(By.XPATH, "//*[@data-testid='send-button']").click()
-
-            # Wait until assistant starts responding
-            logging.info("Waiting for assistant to start responding")
+            # Wait for page to stop loading by counting messages
+            logging.info("Waiting for page to stop loading")
             time_start = time.time()
             while True:
-                # Check timeout
                 if time.time() - time_start > _WAIT_TIMEOUT:
-                    raise Exception("Timeout waiting for assistant to start responding")
+                    raise Exception("Timeout waiting for page to stop loading")
 
-                # Try to find new assistant message ID
-                assistant_message_id = self.driver.execute_script(_ASSISTANT_GET_LAST_MESSAGE_ID)
-
-                # Get conversation ID if it's a new conversation
-                if not conversation_id:
-                    conversation_id_last = self.driver.execute_script(_GET_LAST_CONVERSATION_ID)
-                else:
-                    conversation_id_last = conversation_id
-
-                # Stop waiting if found a new message and conversation ID changed (if case of new conversation)
-                if (
-                    assistant_message_id
-                    and (
-                        conversation_id
-                        or (
-                            not conversation_id
-                            and conversation_id_last
-                            and conversation_id_last != conversation_id_last_start
-                        )
-                    )
-                    and assistant_message_id != assistant_message_id_start
-                ):
-                    conversation_id = conversation_id_last
-                    logging.info(f"New conversation ID: {conversation_id_last}")
-                    logging.info(f"New assistant message ID: {assistant_message_id}")
+                bot_messages_len_start = self.driver.execute_script(self._conversation_parser_js, "count")
+                time.sleep(0.5)
+                bot_messages_len = self.driver.execute_script(self._conversation_parser_js, "count")
+                time.sleep(0.5)
+                if bot_messages_len == bot_messages_len_start:
+                    logging.info("Page loaded successfully")
                     break
 
-                # Sleep a bit before next cycle to prevent overloading and to allow all elements to load properly
-                time.sleep(_WAITER_CYCLE)
+            # Save image
+            image_tempfile_name = None
+            if image is not None:
+                image_format = imghdr.what(None, h=image)
+                if not image_format:
+                    raise Exception("Unable to detect image format")
+                logging.info(f"Detected image format: {image_format}")
+
+                logging.info("Creating temp file for image")
+                image_tempfile = tempfile.NamedTemporaryFile(mode="w+b", suffix=f".{image_format}", delete=False)
+                image_tempfile_name = image_tempfile.name
+                logging.info(f"Saving image into {image_tempfile_name}")
+                with image_tempfile as temp:
+                    temp.write(image)
+                    temp.flush()
+                image_tempfile.close()
+
+            # Paste image
+            if image_tempfile_name:
+                logging.info(f"Pasting {image_tempfile_name}")
+                file_input = self.driver.execute_script(_GET_IMAGE_INPUT)
+                file_input.send_keys(os.path.abspath(image_tempfile_name))
+                logging.info(f"Waiting {_IMAGE_PASTE_DELAY} seconds to make sure it's uploaded")
+                time.sleep(_IMAGE_PASTE_DELAY)
+
+            # Paste text
+            logging.info("Pasting text prompt into searchbox")
+            self.driver.execute_script(_GET_SEARCHBOX).send_keys(prompt)
+
+            # Wait for submit button (just in case)
+            if not self.driver.execute_script(_GET_SUBMIT_BUTTON).is_enabled:
+                logging.info("Waiting for submit button to become available")
+                time_start = time.time()
+                while True:
+                    if time.time() - time_start > _WAIT_TIMEOUT:
+                        raise Exception("Timeout waiting for submit button to become available")
+
+                    if self.driver.execute_script(_GET_SUBMIT_BUTTON).is_enabled:
+                        logging.info("Submit button is now available")
+                        break
+
+                    time.sleep(0.1)
+
+            # Count number of bot's responses
+            bot_messages_len_start = self.driver.execute_script(self._conversation_parser_js, "count")
+            logging.info(f"Found {bot_messages_len_start} bot messages")
+
+            # Submit
+            logging.info("Clinking on submit button")
+            self.driver.execute_script(_GET_SUBMIT_BUTTON).click()
+
+            # Wait until bot starts responding
+            logging.info("Waiting for bot to start responding")
+            time_start = time.time()
+            while True:
+                if time.time() - time_start > _WAIT_TIMEOUT:
+                    raise Exception("Timeout waiting for bot to start responding")
+
+                bot_messages_len = self.driver.execute_script(self._conversation_parser_js, "count")
+                if bot_messages_len != bot_messages_len_start:
+                    logging.info(f"Found {bot_messages_len - bot_messages_len_start} new bot's messages")
+                    break
+
+                time.sleep(0.1)
+
+            # Check for captcha and try to solve it
+            captcha_iframe = self.driver.execute_script(self._conversation_parser_js, "captcha")
+            if captcha_iframe:
+                logging.warning("Found captcha. Trying to solve it")
+                logging.info("Waiting 5 seconds for captcha to load")
+                time.sleep(5)
+
+                logging.info("Switching to the iframe")
+                self.driver.switch_to.frame(captcha_iframe)
+                time.sleep(1)
+
+                logging.info("Retrieving child iframe and switching to it")
+                WebDriverWait(self.driver, _WAIT_TIMEOUT).until(
+                    expected_conditions.frame_to_be_available_and_switch_to_it(
+                        (
+                            By.CSS_SELECTOR,
+                            "iframe[src^='https://challenges.cloudflare.com/cdn-cgi/challenge-platform']",
+                        )
+                    )
+                )
+                time.sleep(1)
+
+                logging.info("Clicking on captcha")
+                self.driver.execute_script("querySelector('#challenge-stage > div > label').click()")
+                time.sleep(1)
+
+                logging.info("Switching to the default content")
+                self.driver.switch_to.default_content()
+
+            # Wait extra 5 seconds just in case to be able to catch moment of loading images
+            # TODO: remove this somehow
+            logging.info("Waiting 5 seconds")
+            time.sleep(5)
 
             # Save cookies
             self.cookies_save()
@@ -495,13 +498,19 @@ class ChatGPTApi:
             # Return new conversation ID
             return conversation_id
 
+        # On error: resume refresher and re-raise error
         except Exception as e:
-            # Resume refresher, reset it's timer and re-raise error
             self._refresher_pause_resume(pause=False, reset_time=True)
             raise e
 
+        # Delete temp file
+        finally:
+            if image_tempfile_name:
+                logging.info(f"Deleting {image_tempfile_name}")
+                os.remove(image_tempfile_name)
+
     def response_read_stream(self, convert_to_markdown: bool = True) -> Generator[Dict]:
-        """Reads response from ChatGPT
+        """Reads response from MS Copilot
 
         Args:
             convert_to_markdown (bool, optional): True to convert result from HTML to Markdown. Defaults to True
@@ -513,8 +522,10 @@ class ChatGPTApi:
             Generator[Dict]: {
                 "finished": True if it's the last response, False if not,
                 "conversation_id": ID of current conversation (from prompt_send),
-                "message_id": "ID of current message (from assistant)",
-                "response": "Actual response as HTML or Markdown"
+                "response": "response as text (or meta response)",
+                "images": ["array of image URL's"],
+                "caption": "images caption",
+                "suggestions": ["array of suggestions of the requests"]
             }
         """
         if self.driver is None:
@@ -526,40 +537,40 @@ class ChatGPTApi:
             # generate until response finished
             finished = False
             while not finished:
-                # Retrieve message ID, class name and inner HTML
-                raw = not convert_to_markdown
-                response = self.driver.execute_script(self._assistant_get_last_message_js, raw)
-                if response is None:
-                    raise Exception("No valid assistant messages found")
-                message_id, class_name, response_text, code_blocks = response
+                # Retrieve data as JSON
+                # See parseMessages() docs for more info
+                response = dict(self.driver.execute_script(self._conversation_parser_js, "parse"))
 
-                # Check response type
-                if class_name.startswith("result-streaming"):
-                    finished = False
-                elif class_name.startswith("markdown"):
-                    finished = True
-                elif not class_name.startswith("result-thinking"):
-                    raise Exception(f"Unknown response type: {class_name}")
+                # Check if finished
+                finished_ = self.driver.execute_script(self._conversation_parser_js, "finished")
+                if isinstance(finished_, dict) and "error" in finished_:
+                    raise Exception(finished_["error"])
+                finished = finished_
 
-                response_parsed = {"finished": finished}
+                response_parsed = {"finished": finished, "conversation_id": self._conversation_id_last}
 
-                def _code_language_callback(element_) -> str or None:
-                    """Extracts language name from lang attribute
-
-                    Args:
-                        element (bs4.element.Tag): <pre> tag
-
-                    Returns:
-                        str or None: language name if exists
-                    """
-                    if element_.find("code"):
-                        languages_ = element_.find("code").get_attribute_list("lang")
-                        return languages_[0] if len(languages_) != 0 else None
-                    return None
+                # Extract text and code blocks
+                response_text = response.get("text")
+                code_blocks = response.get("code_blocks")
 
                 # Convert to markdown
-                if convert_to_markdown:
+                if response_text and convert_to_markdown:
                     try:
+
+                        def _code_language_callback(element_) -> str or None:
+                            """Extracts language name from lang attribute
+
+                            Args:
+                                element (bs4.element.Tag): <pre> tag
+
+                            Returns:
+                                str or None: language name if exists
+                            """
+                            if element_.find("code"):
+                                languages_ = element_.find("code").get_attribute_list("lang")
+                                return languages_[0] if len(languages_) != 0 else None
+                            return None
+
                         # Convert to markdown with code blocks placeholders
                         response_text = markdownify(
                             response_text,
@@ -569,17 +580,29 @@ class ChatGPTApi:
                         )
 
                         # Restore code blocks
-                        if code_blocks is not None and isinstance(code_blocks, dict):
+                        if code_blocks is not None:
                             response_text = response_text.format_map(Default(code_blocks))
                     except Exception as e:
                         logging.error(f"Error converting HTML to Markdown! {e}")
 
-                # Remove leading and tailing new lines
+                # Fix no text by using meta or empty string
+                if not response_text:
+                    response_text = response.get("meta", "")
+
                 response_parsed["response"] = response_text.strip()
 
-                # Add conversation ID and message ID
-                response_parsed["conversation_id"] = self._conversation_id_last
-                response_parsed["message_id"] = message_id
+                # Add image URLs
+                if response.get("images") is not None:
+                    response_parsed["images"] = response.get("images")
+
+                # Add image caption
+                if response.get("caption") is not None:
+                    response_parsed["caption"] = response.get("caption")
+
+                # Add suggestions
+                suggestions = self.driver.execute_script(self._conversation_parser_js, "suggestions")
+                if len(suggestions) != 0:
+                    response_parsed["suggestions"] = suggestions
 
                 # Sleep a bit to prevent overloading
                 time.sleep(_STREAM_READER_CYCLE)
@@ -591,22 +614,35 @@ class ChatGPTApi:
             logging.info("Response finished")
             self.cookies_save()
 
+        finally:
+            # Try to rename conversation
+            if self._conversation_new:
+                time.sleep(1)
+                self._conversation_manage("rename", self._conversation_id_last, raise_on_error=False)
+                logging.info("Refreshing current page")
+                self.driver.refresh()
+                self._wait_for_searchbox()
+            self._conversation_new = False
+
             # Resume refresher and reset it's timer
             self._refresher_pause_resume(pause=False, reset_time=True)
 
-        # Resume refresher and reset it's timer
-        finally:
-            self._refresher_pause_resume(pause=False, reset_time=True)
-
     def response_stop(self) -> None:
-        """Clicks on Stop generating button
+        """Clicks on Stop responding button and sleeps 1 extra second
 
         Raises:
-            Exception: no opened session or script execution error
+            Exception: no opened session, no or disabled button
         """
         if self.driver is None:
             raise Exception("No opened session! Please call session_start() first")
-        self.driver.execute_script(_RESPONSE_STOP)
+        stop_btn = self.driver.execute_script(_STOP_RESPONDING)
+        time.sleep(1)
+        if stop_btn is None:
+            raise Exception('No "Stop responding" button')
+        if stop_btn.is_enabled:
+            stop_btn.click()
+        else:
+            raise Exception("Stop responding button is not enabled")
 
     def conversation_delete(self, conversation_id: str) -> None:
         """Deletes conversation by searching it in side menu and clicking on Delete button
@@ -624,69 +660,11 @@ class ChatGPTApi:
             # Pause auto-refresher
             self._refresher_pause_resume(pause=True)
 
-            # Prevent "element not interactable" error
-            self._remove_new_chat_button()
+            # Delete conversation
+            self._conversation_manage("delete", conversation_id, raise_on_error=True)
 
-            # Search chat and get it's <a> tag and expand button
-            logging.info("Executing conversation search script. Please wait")
-            self.driver.set_script_timeout(_WAIT_TIMEOUT)
-            search_result = self.driver.execute_async_script(self._conversation_search_js, conversation_id)
-            if search_result is None:
-                raise Exception("Unable to find chat expand button")
-            if isinstance(search_result, str):
-                raise Exception(search_result)
-            chat_a_tag, chat_expand_button = search_result
-
-            # Click on expand button
-            action_chains = ActionChains(self.driver)
-            time.sleep(0.1)
-            logging.info("Moving to the a tag")
-            action_chains.move_to_element(chat_a_tag).perform()
-            time.sleep(0.5)
-            logging.info("Clicking on expand button")
-            chat_expand_button.click()
-            time.sleep(0.5)
-
-            # List all menu items
-            menu_items = self.driver.find_elements(By.XPATH, "//*[@role='menuitem']")
-            if len(menu_items) == 0:
-                raise Exception("No menu expanded")
-
-            # Try to find delete button
-            clicked = False
-            for menu_item in menu_items:
-                if "Delete" in menu_item.get_attribute("innerHTML"):
-                    logging.info("Clinking on Delete chat button")
-                    menu_item.click()
-                    clicked = True
-                    time.sleep(1)
-                    break
-
-            # Check if we found it
-            if not clicked:
-                raise Exception("No Delete chat button")
-
-            # Now it's time to confirm chat deletion
-            danger_buttons = self.driver.find_elements(By.XPATH, "//*[@class='btn relative btn-danger']")
-            if len(danger_buttons) == 0:
-                raise Exception("No confirmation dialog")
-
-            # Try to find Delete button inside all btn-danger buttons and click it
-            for danger_button in danger_buttons:
-                if "Delete" in danger_button.get_attribute("innerHTML"):
-                    logging.info("Clicking on confirmation button")
-                    danger_button.click()
-                    logging.info("Conversation deleted")
-
-                    # Resume refresher and reset it's timer
-                    self._refresher_pause_resume(pause=False, reset_time=True)
-                    return
-
-            # We couldn't find confirmation button
-            raise Exception("No confirmation button")
-
-        # Resume refresher and reset it's timer
         finally:
+            # Resume refresher and reset it's timer
             self._refresher_pause_resume(pause=False, reset_time=True)
 
     def session_close(self) -> None:
@@ -752,42 +730,56 @@ class ChatGPTApi:
             logging.info(f"Saving cookies to {cookies_file}")
             json.dump(self._cookies, file, ensure_ascii=False, indent=4)
 
-    def _remove_new_chat_button(self) -> None:
-        """Removes "New chat" button because it intercepts side chat buttons"""
-        sticky_divs = self.driver.find_elements(By.XPATH, "//div[starts-with(@class, 'sticky')]")
-        for sticky_div in sticky_divs:
-            try:
-                if "New chat" in sticky_div.get_attribute("innerText"):
-                    logging.info('Removing "New chat" button')
-                    self.driver.execute_script("arguments[0].remove();", sticky_div)
-                    break
-            except:
-                pass
+    def _conversation_manage(self, action: str, conversation_id: str, raise_on_error: bool) -> bool:
+        """Loads conversation / deletes conversation or renames last conversation to conversation_id
 
-    def _wait_for_prompt_textarea(self) -> None:
-        """Waits for prompt textarea to become visible and 1 extra second to make sure it's loaded and clickable"""
-        logging.info("Waiting for page to load (waiting for prompt-textarea element)")
-        WebDriverWait(self.driver, _WAIT_TIMEOUT).until(
-            expected_conditions.presence_of_element_located((By.ID, "prompt-textarea"))
-        )
+        Args:
+            action (str): "load" or "delete" or "rename"
+            conversation_id (str): unique conversation ID
+            raise_on_error (bool): True to raise exception in case of error
+
+        Raises:
+            Exception: in case of error if raise_on_error is True
+
+        Returns:
+            bool: True if successful, False if not
+        """
+        logging.info(f"Trying to {action} conversation")
+        try:
+            self.driver.set_script_timeout(_WAIT_TIMEOUT)
+            conversation_id_ = self.driver.execute_async_script(self._conversation_manage_js, action, conversation_id)
+            if conversation_id_ is None:
+                raise Exception(f"Unable to {action} conversation to {conversation_id}")
+            elif conversation_id_ != conversation_id:
+                raise Exception(str(conversation_id_))
+            else:
+                logging.info(f'"Conversation {action}" finished successfully')
+            time.sleep(1)
+            return True
+        except Exception as e:
+            if raise_on_error:
+                raise e
+            else:
+                logging.error(f"Unable to {action} conversation: {e}")
+
+        return False
+
+    def _wait_for_searchbox(self) -> None:
+        """Waits for searchbox textarea to become visible and 1 extra second to make sure it's loaded and clickable
+
+        Raises:
+            Exception: in case of timeout
+        """
+        logging.info("Waiting for page to load (waiting for searchbox textarea element)")
+        time_started = time.time()
+        while True:
+            if time.time() - time_started >= _WAIT_TIMEOUT:
+                raise Exception("Timeout waiting for searchbox textarea to load")
+            if self.driver.execute_script(_GET_SEARCHBOX):
+                break
+            time.sleep(0.1)
         time.sleep(1)
         logging.info("Page loaded")
-
-    def _wait_for_send_button(self) -> None:
-        """Waits for send-button to become available"""
-        logging.info("Waiting for send-button")
-        WebDriverWait(self.driver, _WAIT_TIMEOUT).until(
-            expected_conditions.presence_of_element_located((By.XPATH, "//*[@data-testid='send-button']"))
-        )
-        WebDriverWait(self.driver, _WAIT_TIMEOUT).until(
-            expected_conditions.element_to_be_clickable((By.XPATH, "//*[@data-testid='send-button']"))
-        )
-        time.sleep(1)
-        logging.info("send-button is available")
-
-    def _scroll_to_bottom(self) -> None:
-        """Scrolls to the bottom"""
-        self.driver.execute_script(_SCROLL_TO_BOTTOM)
 
     def _refresher_pause_resume(self, pause: bool, reset_time: bool = False) -> None:
         """Pauses or resumes auto-refresher
@@ -815,8 +807,7 @@ class ChatGPTApi:
             self._refresher_timer = time.time()
 
     def _refresher(self) -> None:
-        """Automatically refreshes browser Page every self.auto_refresh_interval seconds, scrolls to bottom
-        and saves cookies
+        """Automatically refreshes browser Page every self.auto_refresh_interval seconds and saves cookies
         (should be background thread)
         Set self._refresher_dont_refresh_flag to True to pause refresher
         Set self._refresher_timer to time.time() to extend time before refresh
@@ -852,13 +843,7 @@ class ChatGPTApi:
                     self.driver.refresh()
 
                     # Wait for page to load
-                    self._wait_for_prompt_textarea()
-
-                    # Prevent "element not interactable" error
-                    self._remove_new_chat_button()
-
-                    # Scroll (just in case)
-                    self._scroll_to_bottom()
+                    self._wait_for_searchbox()
 
                     # Save cookies
                     self.cookies_save()

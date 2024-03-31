@@ -9,4 +9,5 @@ node_modules
 package.json
 package-lock.json
 ChatGPT_cookies.json
+MS_Copilot_cookies.json
 test.py
