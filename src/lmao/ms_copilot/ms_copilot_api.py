@@ -580,6 +580,7 @@ class MSCopilotApi:
 
                 # Reset timer
                 if not finished_ and finished_timer != 0:
+                    logging.info("Received non-finished flag. Resetting timer and waiting for finished flag again")
                     finished_timer = 0
 
                 # Start timer
