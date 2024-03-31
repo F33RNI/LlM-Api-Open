@@ -58,7 +58,7 @@
 
     "__comment21__": "Time (s) for automatically refresh page if no new prompts or responses (to update session)",
     "__comment22__": "Set to 0 to disable auto-refresher",
-    "auto_refresh_interval": 120,
+    "auto_refresh_interval": 300,
 
     "__comment23__": "User agent to prevent detection of headless chrome. Leave empty to disable it",
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36"
