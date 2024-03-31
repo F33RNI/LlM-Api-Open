@@ -395,6 +395,13 @@ Initiates a request to the specified module and streams responses back
     "response": "response as text (or meta response)",
     "images": ["array of image URL's"],
     "caption": "images caption",
+    "attributions": [
+        {
+            "name": "name of attribution",
+            "url": "URL of attribution"
+        },
+        ...
+    ],
     "suggestions": ["array of suggestions of the requests"]
 }
 ```

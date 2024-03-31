@@ -546,6 +546,13 @@ class MSCopilotApi:
                 "response": "response as text (or meta response)",
                 "images": ["array of image URL's"],
                 "caption": "images caption",
+                "attributions": [
+                    {
+                        "name": "name of attribution",
+                        "url": "URL of attribution"
+                    },
+                    ...
+                ],
                 "suggestions": ["array of suggestions of the requests"]
             }
         """
@@ -619,6 +626,10 @@ class MSCopilotApi:
                 # Add image caption
                 if response.get("caption") is not None:
                     response_parsed["caption"] = response.get("caption")
+
+                # Add attributions
+                if response.get("attributions") is not None:
+                    response_parsed["attributions"] = response.get("attributions")
 
                 # Add suggestions
                 suggestions = self.driver.execute_script(self._conversation_parser_js, "suggestions")
