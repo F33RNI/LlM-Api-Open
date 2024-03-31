@@ -127,7 +127,7 @@ _ASSISTANT_GET_LAST_MESSAGE_JS = os.path.abspath(os.path.join(os.path.dirname(__
 _CONVERSATION_SEARCH_JS = os.path.abspath(os.path.join(os.path.dirname(__file__), "conversationSearch.js"))
 
 # Maximum time to wait elements for load
-_WAIT_TIMEOUT = 60
+_WAIT_TIMEOUT = 30
 
 # Try to find start of response each >=100ms
 _WAITER_CYCLE = 0.1

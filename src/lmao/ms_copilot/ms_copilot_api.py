@@ -80,7 +80,7 @@ _CONVERSATION_MANAGE_JS = os.path.abspath(os.path.join(os.path.dirname(__file__)
 _CONVERSATION_PARSER_JS = os.path.abspath(os.path.join(os.path.dirname(__file__), "conversationParser.js"))
 
 # Maximum time to wait elements for load
-_WAIT_TIMEOUT = 60
+_WAIT_TIMEOUT = 30
 
 # Yield response each >=100ms
 _STREAM_READER_CYCLE = 0.1
