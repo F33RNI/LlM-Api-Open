@@ -30,8 +30,11 @@ from setuptools import find_packages, setup
 
 # Include other files
 data_files = ["LICENSE", "README.md"]
+data_files += [str(file) for file in pathlib.Path("configs").glob("*.json")]
 data_files += [str(file) for file in pathlib.Path(os.path.join("src", "lmao", "chatgpt")).glob("*.py")]
 data_files += [str(file) for file in pathlib.Path(os.path.join("src", "lmao", "chatgpt")).glob("*.js")]
+data_files += [str(file) for file in pathlib.Path(os.path.join("src", "lmao", "ms_copilot")).glob("*.py")]
+data_files += [str(file) for file in pathlib.Path(os.path.join("src", "lmao", "ms_copilot")).glob("*.js")]
 
 # Parse version from _version.py file
 with open(os.path.join("src", "lmao", "_version.py"), "r", encoding="utf-8") as file:

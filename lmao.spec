@@ -37,9 +37,10 @@ SOURCE_FILES = [
     "main.py",
     "module_wrapper.py",
     "external_api.py",
+    "proxy_extension.py",
     "_version.py",
     os.path.join("chatgpt", "chatgpt_api.py"),
-    os.path.join("chatgpt", "proxy_extension.py"),
+    os.path.join("ms_copilot", "ms_copilot_api.py"),
 ]
 _sources = [os.path.join("src", "lmao", source_file) for source_file in SOURCE_FILES]
 
@@ -48,8 +49,9 @@ COMPILE_NAME = f"lmao-{platform.system()}-{platform.machine()}".lower()
 
 # Files and folders to include inside builded binary
 INCLUDE_FILES = [
-    ("config.json", "."),
+    (os.path.join("configs", "*.json"), "."),
     (os.path.join("src", "lmao", "chatgpt", "*.js"), os.path.join("lmao", "chatgpt")),
+    (os.path.join("src", "lmao", "ms_copilot", "*.js"), os.path.join("lmao", "ms_copilot")),
 ]
 
 block_cipher = None
