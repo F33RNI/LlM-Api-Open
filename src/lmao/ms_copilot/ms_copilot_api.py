@@ -744,11 +744,11 @@ class MSCopilotApi:
             self._refresher_thread = None
             self._refresher_busy = False
 
-        # Save cookies before exit
-        try:
-            self.cookies_save()
-        except Exception as e:
-            logging.warning(f"Cannot save cookies before closing browser: {e}")
+            # Save cookies before exit
+            try:
+                self.cookies_save()
+            except Exception as e:
+                logging.warning(f"Cannot save cookies before closing browser: {e}")
 
         # Close browser
         logging.info("Closing browser")
