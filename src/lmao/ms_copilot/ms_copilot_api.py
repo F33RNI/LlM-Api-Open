@@ -41,7 +41,7 @@ from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.common.exceptions import TimeoutException
 
-from proxy_extension import ProxyExtension
+from lmao.ms_copilot.proxy_extension import ProxyExtension
 
 
 # JS script that returns searchbox element or null without raising any error

@@ -41,6 +41,8 @@ SOURCE_FILES = [
     "_version.py",
     os.path.join("chatgpt", "chatgpt_api.py"),
     os.path.join("ms_copilot", "ms_copilot_api.py"),
+    os.path.join("chatgpt", "proxy_extension.py"),
+    os.path.join("ms_copilot", "proxy_extension.py"),
 ]
 _sources = [os.path.join("src", "lmao", source_file) for source_file in SOURCE_FILES]
 

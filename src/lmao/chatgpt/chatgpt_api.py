@@ -40,7 +40,7 @@ from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.common.exceptions import TimeoutException
 
-from proxy_extension import ProxyExtension
+from lmao.chatgpt.proxy_extension import ProxyExtension
 
 # JS script that clicks on scroll to bottom button
 _SCROLL_TO_BOTTOM = """
