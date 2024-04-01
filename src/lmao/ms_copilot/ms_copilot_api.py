@@ -230,9 +230,9 @@ class MSCopilotApi:
             logging.info("Adding chrome options")
             chrome_options = undetected_chromedriver.ChromeOptions()
 
-            # Hope this fill fix "Timed out receiving message from renderer"
-            logging.info("Using eager page load strategy")
-            chrome_options.page_load_strategy = "eager"
+            # Hope this fill fix "Timed out receiving message from renderer" but it did't help :(
+            # logging.info("Using eager page load strategy")
+            # chrome_options.page_load_strategy = "eager"
 
             # Proxy
             if self.config.get("proxy_enabled"):
