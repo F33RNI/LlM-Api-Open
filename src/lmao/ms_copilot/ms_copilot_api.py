@@ -45,11 +45,11 @@ from selenium.common.exceptions import TimeoutException
 from lmao.ms_copilot.proxy_extension import ProxyExtension
 
 
-# JS script that injects pretty "large" JS file into <head></head>. Pass path to .js file as argument
+# JS script that injects pretty "large" JS file into <head></head>. Pass script's content as first argument
 _INJECT_JS = """
 const injectedScript = document.createElement("script"); 
 injectedScript.type = "text/javascript"; 
-injectedScript.src = arguments[0];
+injectedScript.text = arguments[0];
 window.document.head.appendChild(injectedScript);
 """
 
@@ -844,18 +844,18 @@ class MSCopilotApi:
         # Check if conversationParser.js is injected
         is_injected = False
         try:
-            is_injected = self.driver.execute_script("isParseInjected();")
+            is_injected = self.driver.execute_script("return isParseInjected();")
         except:
             pass
 
         # Inject JS
         if not is_injected:
             logging.warning("conversationParser is not injected. Injecting it")
-            self.driver.execute_script(_INJECT_JS, _CONVERSATION_PARSER_JS)
-            logging.info(f"Injected? {self.driver.execute_script('isParseInjected();')}")
+            self.driver.execute_script(_INJECT_JS, self._conversation_parser_js)
+            logging.info(f"Injected? {self.driver.execute_script('return isParseInjected();')}")
 
         # Execute script and return result
-        return self.driver.execute_script(f"actionHandle('{action}');")
+        return self.driver.execute_script(f"return actionHandle('{action}');")
 
     def _load_or_refresh(self, url: str or None = None, restart_session_on_error: bool = True) -> bool:
         """Tries to load or refresh page and inject JS scripts without raising any error
