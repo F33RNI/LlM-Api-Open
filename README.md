@@ -40,6 +40,8 @@
 
 ## 🏗️ Getting started
 
+> ⚠️ Will not work with Python **3.13** or later due to `imghdr`
+
 ### ⚙️ 1. Download / build / install LLM-API-Open
 
 There is 4 general ways to get LLM-API-Open
