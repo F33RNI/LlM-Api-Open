@@ -29,7 +29,7 @@ import subprocess
 import time
 import threading
 from collections.abc import Generator
-from typing import Dict
+from typing import Any, Dict
 
 from markdownify import markdownify
 import undetected_chromedriver
@@ -41,6 +41,14 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.common.exceptions import TimeoutException
 
 from lmao.chatgpt.proxy_extension import ProxyExtension
+
+# JS script that injects "large" JS file into <head></head>. Pass script's content as first argument
+_INJECT_JS = """
+const injectedScript = document.createElement("script"); 
+injectedScript.type = "text/javascript"; 
+injectedScript.text = arguments[0];
+window.document.head.appendChild(injectedScript);
+"""
 
 # JS script that clicks on scroll to bottom button
 _SCROLL_TO_BOTTOM = """
@@ -528,9 +536,8 @@ class ChatGPTApi:
             # generate until response finished
             finished = False
             while not finished:
-                # Retrieve message ID, class name and inner HTML
-                raw = not convert_to_markdown
-                response = self.driver.execute_script(self._assistant_get_last_message_js, raw)
+                # Retrieve message ID, class name, inner HTML and code blocks
+                response = self._assistant_get_last_message(raw=not convert_to_markdown)
                 if response is None:
                     raise Exception("No valid assistant messages found")
                 message_id, class_name, response_text, code_blocks = response
@@ -757,6 +764,32 @@ class ChatGPTApi:
         with open(cookies_file, "w+", encoding="utf-8") as file:
             logging.info(f"Saving cookies to {cookies_file}")
             json.dump(self._cookies, file, ensure_ascii=False, indent=4)
+
+    def _assistant_get_last_message(self, raw: bool) -> Any:
+        """Executes assistantGetLastMessage() function from assistantGetLastMessage and injects it's JS if needed
+
+        Args:
+            raw (bool): False to use preformatRecursion(), True to return as is
+
+        Returns:
+            Any: [message ID, responseContainerClassName, responseContainer.innerHTML, codeBlocks (as JSON)] or null
+        """
+        # Check if assistantGetLastMessage.js is injected
+        is_injected = False
+        try:
+            is_injected = self.driver.execute_script("return isGetLastMessageInjected();")
+        except:
+            pass
+
+        # Inject JS
+        if not is_injected:
+            logging.warning("assistantGetLastMessage is not injected. Injecting it")
+            self.driver.execute_script(_INJECT_JS, self._assistant_get_last_message_js)
+            logging.info(f"Injected? {self.driver.execute_script('return isGetLastMessageInjected();')}")
+
+        # Execute script and return result
+        raw = "true" if raw else "false"
+        return self.driver.execute_script(f"return conversationGetLastMessage({raw});")
 
     def _remove_new_chat_button(self) -> None:
         """Removes "New chat" button because it intercepts side chat buttons"""
