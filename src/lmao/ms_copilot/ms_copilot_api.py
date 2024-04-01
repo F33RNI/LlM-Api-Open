@@ -37,6 +37,7 @@ import uuid
 from markdownify import markdownify
 import undetected_chromedriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.common.exceptions import TimeoutException
@@ -64,6 +65,13 @@ _GET_IMAGE_INPUT = """
 return document.querySelector("#b_sydConvCont > cib-serp").shadowRoot.querySelector("#cib-action-bar-main").shadowRoot.querySelectorAll("#vs_fileinput")[0]
 """
 
+# JS script that pastes text into searchbox and returns searchbox itself
+_PASTE_TEXT = """
+const searchBox = document.querySelector("#b_sydConvCont > cib-serp").shadowRoot.querySelector("#cib-action-bar-main").shadowRoot.querySelector("div > div.main-container > div > div.input-row > cib-text-input").shadowRoot.querySelector("#searchbox");
+searchBox.value = arguments[0];
+return searchBox;
+"""
+
 # JS script that sets conversation style (WORKS ONLY ON NEW CONVERSATIONS). Pass 1 / 2 / 3 as argument
 # (1 - Creative, 2 - Balanced, 3 - Precise)
 _SET_STYLE = """
@@ -81,6 +89,12 @@ _CONVERSATION_PARSER_JS = os.path.abspath(os.path.join(os.path.dirname(__file__)
 
 # Maximum time to wait elements for load
 _WAIT_TIMEOUT = 30
+
+# Maximum timeout to wait for page to load
+_PAGE_LOAD_WAIT_TIMEOUT = 15
+
+# Number of retries to reload page if failed to load
+_PAGE_LOAD_RETRIES = 2
 
 # Yield response each >=100ms
 _STREAM_READER_CYCLE = 0.1
@@ -276,7 +290,6 @@ class MSCopilotApi:
                 enable_cdp_events=True,
                 **kwargs,
             )
-            self.driver.set_page_load_timeout(_WAIT_TIMEOUT)
 
             # Add cookies
             logging.info(f"Trying to add {len(self._cookies)} cookies")
@@ -297,11 +310,8 @@ class MSCopilotApi:
 
             # Load initial page
             base_url = self.config.get("base_url")
-            logging.info(f"Loading {base_url}")
-            self.driver.get(base_url)
-
-            # Wait for textarea (New chat)
-            self._wait_for_searchbox()
+            if not self._load_or_refresh(base_url):
+                raise Exception(f"Unable to load {base_url}")
 
             # Save cookies before starting refresher
             self.cookies_save()
@@ -364,42 +374,23 @@ class MSCopilotApi:
 
             # Load initial page
             base_url = self.config.get("base_url")
-            logging.info(f"Loading {base_url}")
-            self.driver.get(base_url)
-
-            # Wait for textarea (New chat)
-            self._wait_for_searchbox()
+            if not self._load_or_refresh(base_url):
+                raise Exception(f"Unable to load {base_url}")
 
             # Try to load conversation
             if conversation_id:
-                if self._conversation_manage("load", conversation_id, raise_on_error=False):
-                    self._wait_for_searchbox()
-                else:
+                if not self._conversation_manage("load", conversation_id, raise_on_error=False):
                     logging.warning(f"Unable to load conversation {conversation_id}. Creating a new one")
                     conversation_id = None
 
             # Check for disabled searchbox (usually caused by "Sorry, this conversation has reached its limit...")
             if not self.driver.execute_script(_GET_SEARCHBOX).is_enabled:
                 logging.warning(f"Found disabled searchbox in conversation {conversation_id}. Limit reached?")
-                logging.info(f"Creating a new conversation. Loading {base_url}")
-                self.driver.get(base_url)
-                self._wait_for_searchbox()
+                logging.info("Creating a new conversation")
                 conversation_id = None
 
-            # Wait for page to stop loading by counting messages
-            logging.info("Waiting for page to stop loading")
-            time_start = time.time()
-            while True:
-                if time.time() - time_start > _WAIT_TIMEOUT:
-                    raise Exception("Timeout waiting for page to stop loading")
-
-                bot_messages_len_start = self.driver.execute_script(self._conversation_parser_js, "count")
-                time.sleep(0.5)
-                bot_messages_len = self.driver.execute_script(self._conversation_parser_js, "count")
-                time.sleep(0.5)
-                if bot_messages_len == bot_messages_len_start:
-                    logging.info("Page loaded successfully")
-                    break
+                if not self._load_or_refresh(base_url):
+                    raise Exception(f"Unable to load {base_url}")
 
             # Set style
             if style and not conversation_id:
@@ -411,6 +402,7 @@ class MSCopilotApi:
                 else:
                     style_int = 2
                 self.driver.execute_script(_SET_STYLE, style_int)
+                time.sleep(0.1)
 
             # Generate new conversation ID if needed
             self._conversation_new = False
@@ -444,7 +436,12 @@ class MSCopilotApi:
 
             # Paste text
             logging.info("Pasting text prompt into searchbox")
-            self.driver.execute_script(_GET_SEARCHBOX).send_keys(prompt)
+            searchbox = self.driver.execute_script(_PASTE_TEXT, prompt)
+            time.sleep(0.1)
+            searchbox.send_keys(Keys.SPACE)
+            time.sleep(0.1)
+            searchbox.send_keys(Keys.BACKSPACE)
+            time.sleep(0.1)
 
             # Wait for submit button (just in case)
             if not self.driver.execute_script(_GET_SUBMIT_BUTTON).is_enabled:
@@ -675,9 +672,8 @@ class MSCopilotApi:
             if self._conversation_new:
                 time.sleep(1)
                 self._conversation_manage("rename", self._conversation_id_last, raise_on_error=False)
-                logging.info("Refreshing current page")
-                self.driver.refresh()
-                self._wait_for_searchbox()
+                time.sleep(1)
+                self._load_or_refresh()
             self._conversation_new = False
 
             # Resume refresher and reset it's timer
@@ -824,6 +820,64 @@ class MSCopilotApi:
 
         return False
 
+    def _load_or_refresh(self, url: str or None = None) -> bool:
+        """Tries to load or refresh page without raising any error
+
+        Args:
+            url (str or None, optional): URL to load or None to refresh. Defaults to None.
+
+        Returns:
+            bool: True if loaded successfully, False if not
+        """
+        # Wait a bit just in case
+        time.sleep(0.5)
+
+        retries_counter = 0
+        while True:
+            try:
+                # Set timeout
+                self.driver.set_page_load_timeout(_PAGE_LOAD_WAIT_TIMEOUT)
+
+                # Load if url provided, refresh otherwise
+                if url:
+                    logging.info(f"Loading {url}")
+                    self.driver.get(url)
+                else:
+                    logging.info("Refreshing current page")
+                    self.driver.refresh()
+
+                # Wait for a searchbox
+                self._wait_for_searchbox()
+
+                # Wait for page to stop loading by counting messages
+                logging.info("Waiting for page to stop loading")
+                time_start = time.time()
+                while True:
+                    if time.time() - time_start > _WAIT_TIMEOUT:
+                        raise Exception("Timeout waiting for page to stop loading")
+
+                    bot_messages_len_start = self.driver.execute_script(self._conversation_parser_js, "count")
+                    time.sleep(0.25)
+                    bot_messages_len = self.driver.execute_script(self._conversation_parser_js, "count")
+                    time.sleep(0.25)
+                    if bot_messages_len == bot_messages_len_start:
+                        logging.info("Page loaded successfully")
+                        break
+
+                # Seems OK
+                return True
+
+            except Exception as e:
+                logging.error(f"Error loading page: {e}")
+                retries_counter += 1
+                if retries_counter > _PAGE_LOAD_RETRIES:
+                    logging.warning(f"No more retries ({retries_counter} / {_PAGE_LOAD_RETRIES}) :(")
+                    return False
+                logging.warning(f"Trying again. Retries: {retries_counter} / {_PAGE_LOAD_RETRIES}")
+
+            # Wait a bit before next cycle
+            time.sleep(1)
+
     def _wait_for_searchbox(self) -> None:
         """Waits for searchbox textarea to become visible and 1 extra second before and after to make sure it's loaded
 
@@ -900,12 +954,8 @@ class MSCopilotApi:
 
                     # Refresh page
                     self._refresher_timer = time_current
-                    logging.info("Refreshing current page")
-                    self.driver.set_page_load_timeout(_WAIT_TIMEOUT)
-                    self.driver.refresh()
-
-                    # Wait for page to load
-                    self._wait_for_searchbox()
+                    if not self._load_or_refresh():
+                        raise Exception("Unable to auto-refresh page")
 
                     # Save cookies
                     self.cookies_save()
