@@ -859,6 +859,7 @@ class MSCopilotApi:
 
     def _load_or_refresh(self, url: str or None = None, restart_session_on_error: bool = True) -> bool:
         """Tries to load or refresh page and inject JS scripts without raising any error
+        TODO: Properly fix "Timed out receiving message from renderer" instead of this crutch :)
 
         Args:
             url (str or None, optional): URL to load or None to refresh. Defaults to None
