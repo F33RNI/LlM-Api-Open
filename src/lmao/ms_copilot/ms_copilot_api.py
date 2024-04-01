@@ -45,12 +45,12 @@ from selenium.common.exceptions import TimeoutException
 from lmao.ms_copilot.proxy_extension import ProxyExtension
 
 
-# JS script that injects pretty "large" JS file into <head></head>
+# JS script that injects pretty "large" JS file into <head></head>. Pass path to .js file as argument
 _INJECT_JS = """
 const head = document.getElementsByTagName("head")[0]; 
 const injectedScript = document.createElement("script"); 
 injectedScript.type = "text/javascript"; 
-injectedScript.text = arguments[0];
+injectedScript.src = arguments[0];
 head.appendChild(injectedScript);
 """
 
@@ -852,7 +852,7 @@ class MSCopilotApi:
         # Inject JS
         if not is_injected:
             logging.warning("conversationParser is not injected. Injecting it")
-            self.driver.execute_script(_INJECT_JS, self._conversation_parser_js)
+            self.driver.execute_script(_INJECT_JS, _CONVERSATION_PARSER_JS)
             logging.info(f"Injected? {self.driver.execute_script('isParseInjected();')}")
 
         # Execute script and return result

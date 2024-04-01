@@ -123,7 +123,6 @@ function countMessagesBot() {
  * @param {*} codeBlocks dictionary for formatting {"placeholder": "code block content", ...}
  */
 function preformatRecursion(element, codeBlocks) {
-
     // Code block
     if (element.tagName === "CIB-CODE-BLOCK") {
         try {
@@ -134,7 +133,7 @@ function preformatRecursion(element, codeBlocks) {
             const codeLanguage = element.getAttribute("code-lang");
 
             // Create placeholder CODE_BLOCK_random16symbols (ex. CODE_BLOCK_fKGojDdEJ62s28nE)
-            placeholder = "CODE_BLOCK_" + makeid(16) + "";
+            const placeholder = "CODE_BLOCK_" + makeid(16) + "";
 
             // Append for future formatting
             codeBlocks[placeholder] = codeText;
@@ -152,7 +151,7 @@ function preformatRecursion(element, codeBlocks) {
         try {
             const annotation = element.getElementsByTagName("annotation")[0].innerHTML;
             if (element.className === "katex-block") {
-                placeholder = "CODE_BLOCK_" + makeid(16) + "";
+                const placeholder = "CODE_BLOCK_" + makeid(16) + "";
                 codeBlocks[placeholder] = annotation;
                 element.outerHTML = "<pre><code lang='latex'>{" + placeholder + "}</code></pre>";
             } else {
@@ -167,9 +166,11 @@ function preformatRecursion(element, codeBlocks) {
     }
 
     // Other element -> split into children and perform the same recursion
-    else
-        for (const child of element.children)
+    else {
+        for (const child of element.children) {
             preformatRecursion(child, codeBlocks);
+        }
+    }
 }
 
 /**
@@ -185,16 +186,16 @@ function parseMessages() {
     // Gel all last bot's messages and ignore empty list
     const lastMessageGroupBot = getLastMessageGroupBot();
     if (lastMessageGroupBot.length === 0) {
-        return {}
+        return {};
     }
 
-    const result = {}
+    const result = {};
 
     const cibMessages = lastMessageGroupBot.shadowRoot.querySelectorAll("cib-message");
 
     // Get finalized attribute from the last message
-    if (cibMessages.length != 0) {
-        result["finalized"] = cibMessages[cibMessages.length - 1].getAttribute("finalized") !== null;
+    if (cibMessages.length !== 0) {
+        result.finalized = cibMessages[cibMessages.length - 1].getAttribute("finalized") !== null;
     }
 
     // Parse each message block
@@ -206,21 +207,21 @@ function parseMessages() {
 
             // Extract image caption from title
             try {
-                const caption = iframeDocument.querySelector("#gir_async > a").getAttribute("title")
-                result["caption"] = caption;
+                const caption = iframeDocument.querySelector("#gir_async > a").getAttribute("title");
+                result.caption = caption;
             } catch (error) {
                 console.error(error);
             }
 
             // Parse image tags (extract clean links)
-            result["images"] = []
+            result.images = [];
             const images = iframeDocument.getElementsByClassName("mimg");
             for (const image of images) {
                 if (image.tagName !== "IMG" || !image.getAttribute("src")) {
                     continue;
                 }
                 const imageSrcClean = image.getAttribute("src").split("?")[0];
-                result["images"].push(imageSrcClean);
+                result.images.push(imageSrcClean);
             }
         }
 
@@ -228,7 +229,7 @@ function parseMessages() {
         else if (cibMessage.getAttribute("type") === "meta") {
             const metaContent = cibMessage.shadowRoot.querySelector("div.content");
             if (metaContent !== null) {
-                result["meta"] = metaContent.innerText;
+                result.meta = metaContent.innerText;
             }
         }
 
@@ -243,25 +244,26 @@ function parseMessages() {
                 // Find and fix code blocks
                 // {"code block placeholder": "code block content", ...}
                 const codeBlocks = {};
-                for (const child of textBlockClone.children)
+                for (const child of textBlockClone.children) {
                     preformatRecursion(child, codeBlocks);
-
-                if (result["text"] === undefined) {
-                    result["text"] = textBlockClone.innerHTML;
-                } else {
-                    result["text"] += textBlockClone.innerHTML;
                 }
-                result["code_blocks"] = codeBlocks;
+
+                if (result.text === undefined) {
+                    result.text = textBlockClone.innerHTML;
+                } else {
+                    result.text += textBlockClone.innerHTML;
+                }
+                result.code_blocks = codeBlocks;
             }
 
             // No text block
             else {
                 const textMessageContent = cibMessage.shadowRoot.querySelector("cib-shared > div.content.text-message-content");
                 if (textMessageContent !== null) {
-                    if (result["text"] === undefined) {
-                        result["text"] = "<p>" + textMessageContent.innerText + "</p>";
+                    if (result.text === undefined) {
+                        result.text = "<p>" + textMessageContent.innerText + "</p>";
                     } else {
-                        result["text"] += "<p>" + textMessageContent.innerText + "</p>";
+                        result.text += "<p>" + textMessageContent.innerText + "</p>";
                     }
                 }
             }
@@ -278,19 +280,18 @@ function parseMessages() {
         }
         attributions = attributions.getElementsByTagName("cib-attribution-item");
         if (attributions.length !== 0) {
-            result["attributions"] = []
+            result.attributions = [];
             for (const attribution of attributions) {
                 try {
                     const url = attribution.shadowRoot.querySelector("a.attribution-item").getAttribute("href");
                     const name = attribution.shadowRoot.querySelector("a.attribution-item > span.text-container").innerText;
-                    result["attributions"].push({ "name": name, "url": url });
+                    result.attributions.push({ name, url });
                 }
 
                 // Just log an error
                 catch (error) {
                     console.error(error);
                 }
-
             }
         }
     }
@@ -389,9 +390,9 @@ function actionHandle(action) {
         }
     }
 
-    // Log and return error
+    // Log and return error as string
     catch (error) {
         console.error(error);
-        return { "error": "" + error };
+        return { error: "" + error };
     }
 }
