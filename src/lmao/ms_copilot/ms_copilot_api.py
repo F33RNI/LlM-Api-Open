@@ -47,11 +47,10 @@ from lmao.ms_copilot.proxy_extension import ProxyExtension
 
 # JS script that injects pretty "large" JS file into <head></head>. Pass path to .js file as argument
 _INJECT_JS = """
-const head = document.getElementsByTagName("head")[0]; 
 const injectedScript = document.createElement("script"); 
 injectedScript.type = "text/javascript"; 
 injectedScript.src = arguments[0];
-head.appendChild(injectedScript);
+window.document.head.appendChild(injectedScript);
 """
 
 # JS script that returns searchbox element or null without raising any error
