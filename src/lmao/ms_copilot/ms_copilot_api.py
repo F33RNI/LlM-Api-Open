@@ -829,7 +829,7 @@ class MSCopilotApi:
         try:
             logging.info(f"Trying to asynchronously {action} conversation")
             self.driver.set_script_timeout(_WAIT_TIMEOUT)
-            conversation_id_ = self.driver.execute_async_script(f"conversationManage({action}, {conversation_id});")
+            conversation_id_ = self.driver.execute_async_script("conversationManage();", action, conversation_id)
             if conversation_id_ is None:
                 raise Exception(f"Unable to {action} conversation to {conversation_id}")
             elif conversation_id_ != conversation_id:

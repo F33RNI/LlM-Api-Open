@@ -94,13 +94,18 @@ function renameChatAndConfirm(conversationID) {
 }
 
 /**
- * Loads or deletes specific conversation or renames the last one into conversationID
- * @param {string} action "load", "delete" or "rename"
- * @param {string} conversationID ID of conversation to load, delete or rename last into
+ * Asynchronously loads or deletes specific conversation or renames the last one into conversationID
+ * Pass "load", "delete" or "rename" as 1st argument and conversationID as 2nd
  */
-function conversationManage(action, conversationID) {
+function conversationManage() {
     // driver.execute_async_script() callback
     const callback = arguments[arguments.length - 1];
+
+    // "load", "delete" or "rename"
+    const action = arguments[0];
+
+    // ID of conversation to load, delete or rename last into
+    const conversationID = arguments[1];
 
     try {
         // Open conversation (load it)
