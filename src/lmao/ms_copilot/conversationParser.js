@@ -142,8 +142,10 @@ function preformatRecursion(element, codeBlocks) {
             element.outerHTML = "<pre><code lang='" + codeLanguage + "'>{" + placeholder + "}</code></pre>";
         }
 
-        // For now, just ignore any errors
-        catch (e) { }
+        // Log error
+        catch (error) {
+            console.error(error);
+        }
     }
 
     // KaTeX -> convert into annotation for future markdown parsing
@@ -156,6 +158,22 @@ function preformatRecursion(element, codeBlocks) {
                 element.outerHTML = "<pre><code lang='latex'>{" + placeholder + "}</code></pre>";
             } else {
                 element.outerHTML = "<code>" + annotation + "</code>";
+            }
+        }
+
+        // Log error
+        catch (error) {
+            console.error(error);
+        }
+    }
+
+    // Replace SUP citations with number in brackets (ex. [1])
+    else if (element.tagName === "SUP" && element.className === "citation-sup") {
+        try {
+            const supParent = element.parentElement;
+            if (supParent.tagName === "A" && supParent.getAttribute("href") !== null) {
+                const supID = element.innerText;
+                supParent.innerHTML = " [" + supID + "]";
             }
         }
 
