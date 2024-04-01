@@ -230,6 +230,10 @@ class MSCopilotApi:
             logging.info("Adding chrome options")
             chrome_options = undetected_chromedriver.ChromeOptions()
 
+            # Hope this fill fix "Timed out receiving message from renderer"
+            logging.info("Using eager page load strategy")
+            chrome_options.page_load_strategy = "eager"
+
             # Proxy
             if self.config.get("proxy_enabled"):
                 proxy_host = self.config.get("proxy_host")
@@ -820,11 +824,12 @@ class MSCopilotApi:
 
         return False
 
-    def _load_or_refresh(self, url: str or None = None) -> bool:
+    def _load_or_refresh(self, url: str or None = None, restart_session_on_error: bool = True) -> bool:
         """Tries to load or refresh page without raising any error
 
         Args:
-            url (str or None, optional): URL to load or None to refresh. Defaults to None.
+            url (str or None, optional): URL to load or None to refresh. Defaults to None
+            restart_session_on_error (bool, optional): call session_close() and session_start() on error
 
         Returns:
             bool: True if loaded successfully, False if not
@@ -873,7 +878,15 @@ class MSCopilotApi:
                 if retries_counter > _PAGE_LOAD_RETRIES:
                     logging.warning(f"No more retries ({retries_counter} / {_PAGE_LOAD_RETRIES}) :(")
                     return False
-                logging.warning(f"Trying again. Retries: {retries_counter} / {_PAGE_LOAD_RETRIES}")
+
+                if restart_session_on_error:
+                    logging.info("Restarting session")
+                    self.session_close(from_refresher=True)
+                    time.sleep(1)
+                    self.session_start()
+                    time.sleep(1)
+
+                logging.warning(f"Trying to load page again. Retries: {retries_counter} / {_PAGE_LOAD_RETRIES}")
 
             # Wait a bit before next cycle
             time.sleep(1)
