@@ -31,7 +31,7 @@ import tempfile
 import time
 import threading
 from collections.abc import Generator
-from typing import Dict
+from typing import Any, Dict
 import uuid
 
 from markdownify import markdownify
@@ -44,6 +44,15 @@ from selenium.common.exceptions import TimeoutException
 
 from lmao.ms_copilot.proxy_extension import ProxyExtension
 
+
+# JS script that injects pretty "large" JS file into <head></head>
+_INJECT_JS = """
+const head = document.getElementsByTagName("head")[0]; 
+const injectedScript = document.createElement("script"); 
+injectedScript.type = "text/javascript"; 
+injectedScript.text = arguments[0];
+head.appendChild(injectedScript);
+"""
 
 # JS script that returns searchbox element or null without raising any error
 _GET_SEARCHBOX = """
@@ -462,7 +471,7 @@ class MSCopilotApi:
                     time.sleep(0.1)
 
             # Count number of bot's responses
-            bot_messages_len_start = self.driver.execute_script(self._conversation_parser_js, "count")
+            bot_messages_len_start = self._conversation_parse("count")
             logging.info(f"Found {bot_messages_len_start} bot messages")
 
             # Submit
@@ -476,7 +485,7 @@ class MSCopilotApi:
                 if time.time() - time_start > _WAIT_TIMEOUT:
                     raise Exception("Timeout waiting for bot to start responding")
 
-                bot_messages_len = self.driver.execute_script(self._conversation_parser_js, "count")
+                bot_messages_len = self._conversation_parse("count")
                 if bot_messages_len != bot_messages_len_start:
                     logging.info(f"Found {bot_messages_len - bot_messages_len_start} new bot's messages")
                     break
@@ -484,7 +493,7 @@ class MSCopilotApi:
                 time.sleep(0.1)
 
             # Check for captcha and try to solve it
-            captcha_iframe = self.driver.execute_script(self._conversation_parser_js, "captcha")
+            captcha_iframe = self._conversation_parse("captcha")
             if captcha_iframe:
                 logging.warning("Found captcha. Trying to solve it")
                 logging.info("Waiting 5 seconds for captcha to load")
@@ -573,10 +582,10 @@ class MSCopilotApi:
             while not finished:
                 # Retrieve data as JSON
                 # See parseMessages() docs for more info
-                response = dict(self.driver.execute_script(self._conversation_parser_js, "parse"))
+                response = dict(self._conversation_parse("parse"))
 
                 # Check if finished
-                finished_ = self.driver.execute_script(self._conversation_parser_js, "finished")
+                finished_ = self._conversation_parse("finished")
                 if isinstance(finished_, dict) and "error" in finished_:
                     logging.warning(f"Error checking finished state: {finished_['error']}")
                     finished_ = False
@@ -657,7 +666,7 @@ class MSCopilotApi:
                     response_parsed["attributions"] = response.get("attributions")
 
                 # Add suggestions
-                suggestions = self.driver.execute_script(self._conversation_parser_js, "suggestions")
+                suggestions = self._conversation_parse("suggestions")
                 if len(suggestions) != 0:
                     response_parsed["suggestions"] = suggestions
 
@@ -824,8 +833,33 @@ class MSCopilotApi:
 
         return False
 
+    def _conversation_parse(self, action: str) -> Any:
+        """Executes actionHandle() function from conversationParser and injects it's JS if needed
+
+        Args:
+            action (str): "captcha", "count", "parse", "suggestions" or "finished"
+
+        Returns:
+            Any: action result or { "error": "exception text" }
+        """
+        # Check if conversationParser.js is injected
+        is_injected = False
+        try:
+            is_injected = self.driver.execute_script("isParseInjected();")
+        except:
+            pass
+
+        # Inject JS
+        if not is_injected:
+            logging.warning("conversationParser is not injected. Injecting it")
+            self.driver.execute_script(_INJECT_JS, self._conversation_parser_js)
+            logging.info(f"Injected? {self.driver.execute_script('isParseInjected();')}")
+
+        # Execute script and return result
+        return self.driver.execute_script(f"actionHandle('{action}');")
+
     def _load_or_refresh(self, url: str or None = None, restart_session_on_error: bool = True) -> bool:
-        """Tries to load or refresh page without raising any error
+        """Tries to load or refresh page and inject JS scripts without raising any error
 
         Args:
             url (str or None, optional): URL to load or None to refresh. Defaults to None
@@ -861,9 +895,9 @@ class MSCopilotApi:
                     if time.time() - time_start > _WAIT_TIMEOUT:
                         raise Exception("Timeout waiting for page to stop loading")
 
-                    bot_messages_len_start = self.driver.execute_script(self._conversation_parser_js, "count")
+                    bot_messages_len_start = self._conversation_parse("count")
                     time.sleep(0.25)
-                    bot_messages_len = self.driver.execute_script(self._conversation_parser_js, "count")
+                    bot_messages_len = self._conversation_parse("count")
                     time.sleep(0.25)
                     if bot_messages_len == bot_messages_len_start:
                         logging.info("Page loaded successfully")

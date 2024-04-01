@@ -23,6 +23,14 @@
  */
 
 /**
+ * Call this from python script to check if this file is injected
+ * @returns true
+ */
+function isParseInjected() {
+    return true;
+}
+
+/**
  * Creates random string
  * https://stackoverflow.com/a/1349426
  * @param {*} length length of string
@@ -312,81 +320,78 @@ function parseSuggestions() {
     return suggestions;
 }
 
-// Action can be "captcha", "count", "parse", "suggestions" or "finished"
-const action = arguments[0];
+/**
+ * Finds captcha iframe, counts bot messages, parses response, parses suggestions or checks if response is finished
+ * @param {string} action "captcha", "count", "parse", "suggestions" or "finished"
+ * @returns action result or { "error": "exception text" }
+ */
+function actionHandle(action) {
+    try {
+        // Return captcha's iframe or null if no captcha without raising any error
+        if (action === "captcha") {
+            try {
+                const lastMessageGroupBot = getLastMessageGroupBot();
+                const cibMessages = lastMessageGroupBot.shadowRoot.querySelectorAll("cib-message");
+                const cibMessageLast = cibMessages[cibMessages.length - 1];
+                if (cibMessageLast.getAttribute("content") === "captcha") {
+                    return cibMessageLast.shadowRoot.querySelector("iframe");
+                }
+            }
 
-try {
-    // Check if response finalized
-    // if (action === "finalized") {
-    //    const lastMessageGroupBot = getLastMessageGroupBot();
-    //    const cibMessages = lastMessageGroupBot.shadowRoot.querySelectorAll("cib-message");
-    //    const cibMessageLast = cibMessages[cibMessages.length - 1];
-    //    return { "finalized": cibMessageLast.getAttribute("finalized") !== null };
-    // }
+            // Just log an error
+            catch (error) {
+                console.error(error);
+            }
 
-    // Return captcha's iframe or null if no captcha without raising any error
-    if (action === "captcha") {
-        try {
+            return null;
+        }
+
+        // Count number of bot's messages -> return number directly, because countMessagesBot() cannot raise any error
+        else if (action === "count") {
+            return countMessagesBot();
+        }
+
+        // Parse response -> return JSON
+        else if (action === "parse") {
+            return parseMessages();
+        }
+
+        // Parse suggestions return array directly, because parseSuggestions() cannot raise any error
+        else if (action === "suggestions") {
+            return parseSuggestions();
+        }
+
+        // Check if response finished
+        else if (action === "finished") {
+            // Check for "Stop responding button"
+            const stopRespondingBtn = document.querySelector("#b_sydConvCont > cib-serp").shadowRoot.querySelector("#cib-action-bar-main").shadowRoot.querySelector("div > cib-typing-indicator").shadowRoot.querySelector("#stop-responding-button");
+            if (stopRespondingBtn !== null && !stopRespondingBtn.disabled) {
+                return false;
+            }
+
+            // Button is disabled -> check for image loading
             const lastMessageGroupBot = getLastMessageGroupBot();
             const cibMessages = lastMessageGroupBot.shadowRoot.querySelectorAll("cib-message");
-            const cibMessageLast = cibMessages[cibMessages.length - 1];
-            if (cibMessageLast.getAttribute("content") === "captcha") {
-                return cibMessageLast.shadowRoot.querySelector("iframe");
+            for (const cibMessage of cibMessages) {
+                if (cibMessage.getAttribute("content") !== "IMAGE") {
+                    continue;
+                }
+                const cibMessageIframe = cibMessage.shadowRoot.querySelector("cib-shared > iframe");
+                if (cibMessageIframe === null) {
+                    continue;
+                }
+                const iframeDocument = cibMessageIframe.contentWindow.document;
+                if (iframeDocument.querySelector("#giloader").getAttribute("style") === "display: flex;") {
+                    return false;
+                }
             }
+            return true;
         }
-
-        // Just log an error
-        catch (error) {
-            console.error(error);
-        }
-
-        return null;
     }
 
-    // Count number of bot's messages -> return number directly, because countMessagesBot() cannot raise any error
-    else if (action === "count") {
-        return countMessagesBot();
+    // Log and return error
+    catch (error) {
+        console.error(error);
+        return { "error": "" + error };
     }
-
-    // Parse response -> return JSON
-    else if (action === "parse") {
-        return parseMessages();
-    }
-
-    // Parse suggestions return array directly, because parseSuggestions() cannot raise any error
-    else if (action === "suggestions") {
-        return parseSuggestions();
-    }
-
-    // Check if response finished
-    else if (action === "finished") {
-        // Check for "Stop responding button"
-        const stopRespondingBtn = document.querySelector("#b_sydConvCont > cib-serp").shadowRoot.querySelector("#cib-action-bar-main").shadowRoot.querySelector("div > cib-typing-indicator").shadowRoot.querySelector("#stop-responding-button");
-        if (stopRespondingBtn !== null && !stopRespondingBtn.disabled)
-            return false;
-
-        // Button is disabled -> check for image loading
-        const lastMessageGroupBot = getLastMessageGroupBot();
-        const cibMessages = lastMessageGroupBot.shadowRoot.querySelectorAll("cib-message");
-        for (const cibMessage of cibMessages) {
-            if (cibMessage.getAttribute("content") !== "IMAGE") {
-                continue;
-            }
-            const cibMessageIframe = cibMessage.shadowRoot.querySelector("cib-shared > iframe");
-            if (cibMessageIframe === null) {
-                continue;
-            }
-            const iframeDocument = cibMessageIframe.contentWindow.document;
-            if (iframeDocument.querySelector("#giloader").getAttribute("style") == "display: flex;") {
-                return false
-            }
-        }
-        return true;
-    }
-}
-
-// Log and return error
-catch (error) {
-    console.error(error);
-    return { "error": "" + error };
 }
