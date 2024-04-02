@@ -209,13 +209,9 @@ class ModuleWrapper:
         try:
             self._module_class.response_stop()
 
-            # Reset status
+        # Clear status back to IDLE
+        finally:
             self.status = STATUS_IDLE
-
-        # Clear status back to IDLE and re-raise exception
-        except Exception as e:
-            self.status = STATUS_IDLE
-            raise e
 
     def delete_conversation(self, conversation: Dict) -> None:
         """Wrapper for conversation_delete() function
