@@ -1,7 +1,7 @@
 # 🕊️ LLM-API-Open (LMAO)
 
-| <img src="brandbook/Logo.png" height="auto" width="128" alt="PetalFlow logo"> | <h3>Unofficial open APIs for popular LLMs with self-hosted redirect capability</h3> |
-| ----------------------------------------------------------------------------- | :---------------------------------------------------------------------------------: |
+| <img src="https://github.com/F33RNI/LlM-Api-Open/blob/main/brandbook/Logo.png?raw=true" height="auto" width="128" alt="LLM-API-Open logo"> | <h3>Unofficial open APIs for popular LLMs with self-hosted redirect capability</h3> |
+| ------------------------------------------------------------------------------------------------------------------------------------------ | :---------------------------------------------------------------------------------: |
 
 ----------
 
