@@ -481,8 +481,6 @@ class MSCopilotApi:
             # Submit
             logging.info("Clinking on submit button")
             submit_button = self.driver.execute_script(_GET_SUBMIT_BUTTON)
-            submit_button.focus()
-            time.sleep(0.1)
             submit_button.click()
 
             # Wait until bot starts responding
