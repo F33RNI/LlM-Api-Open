@@ -48,7 +48,13 @@ There is 4 general ways to get LLM-API-Open
 
 #### ⚙️ Install via `pip`
 
-- Install from GitHub directly
+- Install from PyPi
+
+    ```shell
+    pip install llm-api-open
+    ```
+
+- **Or** install from GitHub directly
 
     ```shell
     pip install git+https://github.com/F33RNI/LLM-API-Open.git
