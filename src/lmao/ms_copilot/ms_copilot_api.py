@@ -812,30 +812,16 @@ class MSCopilotApi:
         Returns:
             bool: True if successful, False if not
         """
-        # Check if conversationManage.js is injected
-        is_injected = False
+        logging.info(f"Trying to {action} conversation")
         try:
-            is_injected = self.driver.execute_script("return isManageInjected();")
-        except:
-            pass
-
-        # Inject JS
-        if not is_injected:
-            logging.warning("conversationManage is not injected. Injecting it")
-            self.driver.execute_script(_INJECT_JS, self._conversation_manage_js)
-            logging.info(f"Injected? {self.driver.execute_script('return isManageInjected();')}")
-
-        # Execute script and wait for callback or timeout
-        try:
-            logging.info(f"Trying to asynchronously {action} conversation")
             self.driver.set_script_timeout(_WAIT_TIMEOUT)
-            conversation_id_ = self.driver.execute_async_script("conversationManage();", action, conversation_id)
+            conversation_id_ = self.driver.execute_async_script(self._conversation_manage_js, action, conversation_id)
             if conversation_id_ is None:
                 raise Exception(f"Unable to {action} conversation to {conversation_id}")
             elif conversation_id_ != conversation_id:
                 raise Exception(str(conversation_id_))
             else:
-                logging.info(f'Operation "conversation {action}" finished successfully')
+                logging.info(f'"Conversation {action}" finished successfully')
             time.sleep(1)
             return True
         except Exception as e:

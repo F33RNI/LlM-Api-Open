@@ -22,13 +22,8 @@
  * SOFTWARE.
  */
 
-/**
- * Call this from python script to check if this file is injected
- * @returns true
- */
-function isManageInjected() {
-    return true;
-}
+// driver.execute_async_script() callback
+const callback = arguments[arguments.length - 1];
 
 /**
  * Tries to click on "See all recent chats" button without raising any error
@@ -93,70 +88,60 @@ function renameChatAndConfirm(conversationID) {
     confirmBtn.click();
 }
 
-/**
- * Asynchronously loads or deletes specific conversation or renames the last one into conversationID
- * Pass "load", "delete" or "rename" as 1st argument and conversationID as 2nd
- */
-function conversationManage() {
-    // driver.execute_async_script() callback
-    const callback = arguments[arguments.length - 1];
+// Extract arguments (action, conversation ID)
+// Action can be "load", "delete" or "rename"
+const action = arguments[0];
+const conversationID = arguments[1];
 
-    // "load", "delete" or "rename"
-    const action = arguments[0];
+try {
+    // Open conversation (load it)
+    if (action === "load") {
+        // Expand all chats -> wait 500ms -> find conversation -> open it -> return the same conversation ID or "null"
+        expandChats();
+        setTimeout(function () {
+            const cibThreadContainer = searchCibThreadContainer(conversationID, true);
+            if (cibThreadContainer === null) {
+                callback("" + null);
+            }
 
-    // ID of conversation to load, delete or rename last into
-    const conversationID = arguments[1];
-
-    try {
-        // Open conversation (load it)
-        if (action === "load") {
-            // Expand all chats -> wait 500ms -> find conversation -> open it -> return the same conversation ID or "null"
-            expandChats();
-            setTimeout(function () {
-                const cibThreadContainer = searchCibThreadContainer(conversationID, true);
-                if (cibThreadContainer === null) {
-                    callback("" + null);
-                }
-
-                const loadChatBtn = cibThreadContainer.querySelector("div > div > button");
-                loadChatBtn.focus();
-                loadChatBtn.click();
-                callback("" + conversationID);
-            }, 500);
-        }
-
-        // Delete conversation
-        else if (action === "delete") {
-            // Expand all chats -> wait 500ms -> find conversation -> delete it -> return the same conversation ID or "null"
-            expandChats();
-            setTimeout(function () {
-                const cibThreadContainer = searchCibThreadContainer(conversationID, false);
-                if (cibThreadContainer === null) {
-                    callback("" + null);
-                }
-
-                const loadChatBtn = cibThreadContainer.querySelector("div > div > button");
-                loadChatBtn.focus();
-                const deleteChatBtn = cibThreadContainer.querySelector("div > div > div.controls > button.delete.icon-button");
-                deleteChatBtn.click();
-                callback("" + conversationID);
-            }, 500);
-        }
-
-        // Rename conversation
-        else if (action === "rename") {
-            // Enter edit mode -> wait 500ms -> rename and confirm -> return the same conversation ID
-            startRenameMode();
-            setTimeout(function () {
-                renameChatAndConfirm(conversationID);
-                callback("" + conversationID);
-            }, 500);
-        }
+            const loadChatBtn = cibThreadContainer.querySelector("div > div > button");
+            loadChatBtn.focus();
+            loadChatBtn.click();
+            callback("" + conversationID);
+        }, 500);
     }
 
-    // Log and return error as string
-    catch (error) {
-        console.error(error);
-        callback("" + error);
+    // Delete conversation
+    else if (action === "delete") {
+        // Expand all chats -> wait 500ms -> find conversation -> delete it -> return the same conversation ID or "null"
+        expandChats();
+        setTimeout(function () {
+            const cibThreadContainer = searchCibThreadContainer(conversationID, false);
+            if (cibThreadContainer === null) {
+                callback("" + null);
+            }
+
+            const loadChatBtn = cibThreadContainer.querySelector("div > div > button");
+            loadChatBtn.focus();
+            const deleteChatBtn = cibThreadContainer.querySelector("div > div > div.controls > button.delete.icon-button");
+            deleteChatBtn.click();
+            callback("" + conversationID);
+        }, 500);
     }
+
+    // Rename conversation
+    else if (action === "rename") {
+        // Enter edit mode -> wait 500ms -> rename and confirm -> return the same conversation ID
+        startRenameMode();
+        setTimeout(function () {
+            renameChatAndConfirm(conversationID);
+            callback("" + conversationID);
+        }, 500);
+    }
+}
+
+// Log and return error as string
+catch (error) {
+    console.error(error);
+    callback("" + error);
 }
