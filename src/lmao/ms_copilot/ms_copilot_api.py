@@ -475,12 +475,15 @@ class MSCopilotApi:
 
             # Count number of bot's responses
             bot_messages_len_start = self._conversation_parse("count")
-            time.sleep(0.1)
             logging.info(f"Found {bot_messages_len_start} bot messages")
+            time.sleep(0.1)
 
             # Submit
             logging.info("Clinking on submit button")
-            self.driver.execute_script(_GET_SUBMIT_BUTTON).click()
+            submit_button = self.driver.execute_script(_GET_SUBMIT_BUTTON)
+            submit_button.focus()
+            time.sleep(0.1)
+            submit_button.click()
 
             # Wait until bot starts responding
             logging.info("Waiting for bot to start responding")
