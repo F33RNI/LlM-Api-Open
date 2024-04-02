@@ -648,7 +648,14 @@ class MSCopilotApi:
 
                 # Fix no text by using meta or empty string
                 if not response_text:
-                    response_text = response.get("meta", "")
+                    meta_response = response.get("meta")
+
+                    # Format meta as monospaced text
+                    if meta_response and convert_to_markdown:
+                        meta_response = f"`{meta_response}`"
+
+                    # Use meta response or empty text
+                    response_text = meta_response if meta_response else ""
 
                 response_parsed["response"] = response_text.strip()
 
