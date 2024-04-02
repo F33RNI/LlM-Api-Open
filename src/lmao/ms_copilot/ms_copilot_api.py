@@ -76,7 +76,11 @@ return document.querySelector("#b_sydConvCont > cib-serp").shadowRoot.querySelec
 # JS script that pastes text into searchbox and returns searchbox itself
 _PASTE_TEXT = """
 const searchBox = document.querySelector("#b_sydConvCont > cib-serp").shadowRoot.querySelector("#cib-action-bar-main").shadowRoot.querySelector("div > div.main-container > div > div.input-row > cib-text-input").shadowRoot.querySelector("#searchbox");
+searchBox.focus();
 searchBox.value = arguments[0];
+searchBox.dispatchEvent(
+  new Event("input", { bubbles: true, cancelable: true })
+);
 return searchBox;
 """
 
@@ -471,6 +475,7 @@ class MSCopilotApi:
 
             # Count number of bot's responses
             bot_messages_len_start = self._conversation_parse("count")
+            time.sleep(0.1)
             logging.info(f"Found {bot_messages_len_start} bot messages")
 
             # Submit
