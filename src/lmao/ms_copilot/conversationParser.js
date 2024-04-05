@@ -228,7 +228,28 @@ function parseMessages() {
                 const caption = iframeDocument.querySelector("#gir_async > a").getAttribute("title");
                 result.caption = caption;
             } catch (error) {
-                console.error(error);
+                try {
+                    const caption = iframeDocument.querySelector("#gir_async > div.gir_attr_lnk_container > a.gir_attr_lnk").getAttribute("title");
+                    result.caption = caption;
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+
+            // Try to find error
+            let errorMessage = null;
+            try {
+                errorMessage = iframeDocument.querySelector("#girer > div > div.gil_err_sbt").innerText;
+                errorMessage = "<p>" + errorMessage.replace("\nReport", "") + "</p>";
+            } catch (error) { }
+
+            // Save error text
+            if (errorMessage !== null) {
+                if (result.text === undefined) {
+                    result.text = errorMessage;
+                } else {
+                    result.text += errorMessage;
+                }
             }
 
             // Parse image tags (extract clean links)
