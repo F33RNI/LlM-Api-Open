@@ -227,7 +227,7 @@ function parseMessages() {
             try {
                 const caption = iframeDocument.querySelector("#gir_async > a").getAttribute("title");
                 result.caption = caption;
-            } catch (error) {
+            } catch (e) {
                 try {
                     const caption = iframeDocument.querySelector("#gir_async > div.gir_attr_lnk_container > a.gir_attr_lnk").getAttribute("title");
                     result.caption = caption;
