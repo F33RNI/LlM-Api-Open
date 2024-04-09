@@ -881,6 +881,9 @@ class MSCopilotApi:
         Returns:
             bool: True if loaded successfully, False if not
         """
+        # Reset timer
+        self._refresher_timer = time.time()
+
         # Wait a bit just in case
         time.sleep(0.5)
 
@@ -1012,8 +1015,7 @@ class MSCopilotApi:
                     # Set busy flag
                     self._refresher_busy = True
 
-                    # Refresh page
-                    self._refresher_timer = time_current
+                    # Refresh page (self._refresher_timer will be set inside this function)
                     if not self._load_or_refresh():
                         raise Exception("Unable to auto-refresh page")
 
