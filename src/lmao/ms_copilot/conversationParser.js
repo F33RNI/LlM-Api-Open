@@ -274,28 +274,30 @@ function parseMessages() {
 
         // Text response
         else if (cibMessage.getAttribute("type") === "text") {
-            // Get and check for text block
-            const textBlock = cibMessage.shadowRoot.querySelector("cib-shared > div > div > div.ac-textBlock");
-            if (textBlock !== null) {
-                // Create a copy
-                const textBlockClone = textBlock.cloneNode(true);
+            // Get and check for text blocks
+            const textBlocks = cibMessage.shadowRoot.querySelectorAll("cib-shared > div > div > div.ac-textBlock");
+            if (textBlocks.length !== 0) {
+                for (const textBlock of textBlocks) {
+                    // Create a copy
+                    const textBlockClone = textBlock.cloneNode(true);
 
-                // Find and fix code blocks
-                // {"code block placeholder": "code block content", ...}
-                const codeBlocks = {};
-                for (const child of textBlockClone.children) {
-                    preformatRecursion(child, codeBlocks);
-                }
+                    // Find and fix code blocks
+                    // {"code block placeholder": "code block content", ...}
+                    const codeBlocks = {};
+                    for (const child of textBlockClone.children) {
+                        preformatRecursion(child, codeBlocks);
+                    }
 
-                if (result.text === undefined) {
-                    result.text = textBlockClone.innerHTML;
-                } else {
-                    result.text += textBlockClone.innerHTML;
+                    if (result.text === undefined) {
+                        result.text = textBlockClone.innerHTML;
+                    } else {
+                        result.text += textBlockClone.innerHTML;
+                    }
+                    result.code_blocks = codeBlocks;
                 }
-                result.code_blocks = codeBlocks;
             }
 
-            // No text block
+            // No text blocks
             else {
                 const textMessageContent = cibMessage.shadowRoot.querySelector("cib-shared > div.content.text-message-content");
                 if (textMessageContent !== null) {
@@ -435,3 +437,5 @@ function actionHandle(action) {
         return { error: "" + error };
     }
 }
+
+actionHandle("parse");
