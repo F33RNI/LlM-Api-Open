@@ -192,7 +192,7 @@ class ExternalAPI:
                 return jsonify({}), 200
             except Exception as e:
                 logging.error(f"/init error: {e}")
-                return jsonify({"error": e}), 500
+                return jsonify({"error": str(e)}), 500
 
         @self.app.route("/", methods=["POST"])
         @self.app.route("/index", methods=["POST"])
@@ -248,7 +248,7 @@ class ExternalAPI:
                 return jsonify(statuses), 200
             except Exception as e:
                 logging.error(f"/status error: {e}")
-                return jsonify({"error": e}), 500
+                return jsonify({"error": str(e)}), 500
 
         @self.app.route("/api/ask", methods=["POST"])
         @limit_content_length(3 * 1024 * 1024)
@@ -342,7 +342,7 @@ class ExternalAPI:
 
             except Exception as e:
                 logging.error(f"/ask error: {e}")
-                return jsonify({"error": e}), 500
+                return jsonify({"error": str(e)}), 500
 
         @self.app.route("/api/stop", methods=["POST"])
         @self.limiter.limit(self.rate_limit_fast)
