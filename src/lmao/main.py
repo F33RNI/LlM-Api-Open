@@ -260,8 +260,12 @@ def main():
 
     # Start API server if no --test mode specified
     else:
+        if args.ssl and len(args.ssl) < 2:
+            logging.error("Please provide paths to both .crt and .key files")
+            return
+
         api = ExternalAPI(config, tokens=args.tokens)
-        api.run(args.ip, args.port, ssl_context=tuple(args.ssl))
+        api.run(args.ip, args.port, certfile=args.ssl[0], keyfile=args.ssl[1])
 
 
 if __name__ == "__main__":

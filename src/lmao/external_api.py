@@ -25,6 +25,7 @@ SOFTWARE.
 import atexit
 import json
 import logging
+import ssl
 import threading
 from typing import Dict, List, Literal, Tuple
 
@@ -423,19 +424,19 @@ class ExternalAPI:
             except Exception as e:
                 logging.warning(f"Cannot close {module_name}: {e}")
 
-    def run(self, host: str, port: int, ssl_context: Tuple[str, str] or None = None):
+    def run(self, host: str, port: int, certfile: str or None = None, keyfile: str or None = None):
         """Starts API server
 
         Args:
             host (str): server host (ip)
             port (int): server port
-            ssl_context (Tuple[str, str] or None, optional): ("path/to/certificate.crt", "path/to/private.key")
-            Specify ssl_context to enable HTTPS server instead of HTTP
+            certfile (str or None, optional): "path/to/certificate.crt" to enable SSL. Defaults to None
+            keyfile (str or None, optional): "path/to/private.key" to enable SSL. Defaults to None
         """
         atexit.register(self._close_modules)
-        if ssl_context and len(ssl_context) == 0:
-            ssl_context = None
-        if ssl_context:
-            self.app.run(host=host, port=port, ssl_context=ssl_context, debug=False)
+        if certfile and keyfile:
+            context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+            context.load_cert_chain(certfile=certfile, keyfile=keyfile)
+            self.app.run(host=host, port=port, ssl_context=context, debug=False)
         else:
             self.app.run(host=host, port=port, debug=False)
