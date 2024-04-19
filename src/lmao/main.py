@@ -63,7 +63,8 @@ def logging_setup() -> None:
 def parse_args() -> argparse.Namespace:
     """Parses cli arguments
     usage: lmao [-h] [-v] [-c CONFIGS] [-t TEST] [-i IP] [-p PORT] [-s SSL [SSL ...]] [--tokens TOKENS [TOKENS ...]]
-            [--no-logging-init]
+        [--rate-limits-default RATE_LIMITS_DEFAULT [RATE_LIMITS_DEFAULT ...]]
+        [--rate-limit-fast RATE_LIMIT_FAST] [--no-logging-init]
 
     Unofficial open APIs for popular LLMs with self-hosted redirect capability
 
@@ -76,10 +77,13 @@ def parse_args() -> argparse.Namespace:
     -i IP, --ip IP        API server Host (IP) (Default: localhost)
     -p PORT, --port PORT  API server port (Default: 1312)
     -s SSL [SSL ...], --ssl SSL [SSL ...]
-                            Paths to SSL certificate and private key (ex. --ssl "path/to/certificate.crt"
-                            "path/to/private.key")
+                            Paths to SSL certificate and private key (ex. --ssl "path/to/certificate.crt" "path/to/private.key")
     --tokens TOKENS [TOKENS ...]
                             API tokens to enable authorization (ex. --tokens "abcdefg12345" "AAAAATESTtest")
+    --rate-limits-default RATE_LIMITS_DEFAULT [RATE_LIMITS_DEFAULT ...]
+                            Rate limits for all API requests except /status and /stop (Default: --rate-limits-default "10/minute", "1/second")
+    --rate-limit-fast RATE_LIMIT_FAST
+                            Rate limit /status and /stop API requests (Default: "1/second")
     --no-logging-init     specify to bypass logging initialization (will be set automatically when using --test)
 
     Returns:
@@ -146,6 +150,20 @@ def parse_args() -> argparse.Namespace:
         default=[],
         required=False,
         help='API tokens to enable authorization (ex. --tokens "abcdefg12345" "AAAAATESTtest")',
+    )
+    parser.add_argument(
+        "--rate-limits-default",
+        nargs="+",
+        default=["10/minute", "1/second"],
+        required=False,
+        help='Rate limits for all API requests except /status and /stop (Default: --rate-limits-default "10/minute", "1/second")',
+    )
+    parser.add_argument(
+        "--rate-limit-fast",
+        type=str,
+        default="1/second",
+        required=False,
+        help='Rate limit /status and /stop API requests (Default: "1/second")',
     )
     parser.add_argument(
         "--no-logging-init",
@@ -264,7 +282,12 @@ def main():
             logging.error("Please provide paths to both .crt and .key files")
             return
 
-        api = ExternalAPI(config, tokens=args.tokens)
+        api = ExternalAPI(
+            config,
+            rate_limits_default=args.rate_limits_default,
+            rate_limit_fast=args.rate_limit_fast,
+            tokens=args.tokens,
+        )
         if args.ssl and len(args.ssl) == 2:
             api.run(args.ip, args.port, certfile=args.ssl[0], keyfile=args.ssl[1])
         else:

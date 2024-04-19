@@ -153,8 +153,8 @@ module.close(blocking=True)
 
 ```text
 $ lmao --help        
-usage: lmao [-h] [-v] [-c CONFIGS] [-t TEST] [-i IP] [-p PORT] [-s SSL [SSL ...]] [--tokens TOKENS [TOKENS ...]]
-            [--no-logging-init]
+usage: lmao [-h] [-v] [-c CONFIGS] [-t TEST] [-i IP] [-p PORT] [-s SSL [SSL ...]] [--tokens TOKENS [TOKENS ...]] [--rate-limits-default RATE_LIMITS_DEFAULT [RATE_LIMITS_DEFAULT ...]]
+            [--rate-limit-fast RATE_LIMIT_FAST] [--no-logging-init]
 
 Unofficial open APIs for popular LLMs with self-hosted redirect capability
 
@@ -167,10 +167,13 @@ options:
   -i IP, --ip IP        API server Host (IP) (Default: localhost)
   -p PORT, --port PORT  API server port (Default: 1312)
   -s SSL [SSL ...], --ssl SSL [SSL ...]
-                        Paths to SSL certificate and private key (ex. --ssl "path/to/certificate.crt"
-                        "path/to/private.key")
+                        Paths to SSL certificate and private key (ex. --ssl "path/to/certificate.crt" "path/to/private.key")
   --tokens TOKENS [TOKENS ...]
                         API tokens to enable authorization (ex. --tokens "abcdefg12345" "AAAAATESTtest")
+  --rate-limits-default RATE_LIMITS_DEFAULT [RATE_LIMITS_DEFAULT ...]
+                        Rate limits for all API requests except /status and /stop (Default: --rate-limits-default "10/minute", "1/second")
+  --rate-limit-fast RATE_LIMIT_FAST
+                        Rate limit /status and /stop API requests (Default: "1/second")
   --no-logging-init     specify to bypass logging initialization (will be set automatically when using --test)
 
 examples:
@@ -298,6 +301,8 @@ Begins module initialization (in a separate, non-blocking thread)
 
 **Request (POST):**
 
+> Maximum content length: `100 bytes`. Default rate limits: `10/minute`, `1/second`
+
 - Without authorization
 
     ```json
@@ -320,7 +325,8 @@ Begins module initialization (in a separate, non-blocking thread)
 **Returns:**
 
 - ✔️ If everything is ok: status code `200` and `{}` body
-- ❌ In case of an error: status code `400` or `500` and `{"error": "Error message"}` body
+- ❌ Error codes `429`, `401` or `413` in case of rate limit, wrong token or too large request
+- ❌ In case of other error: status code `400` or `500` and `{"error": "Error message"}` body
 
 **Example:**
 
@@ -336,6 +342,8 @@ $ curl --request POST --header "Content-Type: application/json" --data '{"module
 Retrieves the current status of all modules
 
 **Request (POST):**
+
+> Maximum content length: `100 bytes`. Default rate limits: `1/second`
 
 - Without authorization
 
@@ -368,6 +376,7 @@ Retrieves the current status of all modules
 ]
 ```
 
+- ❌ Error codes `429`, `401` or `413` in case of rate limit, wrong token or too large request
 - ❌ In case of an modules iteration error: status code `500` and `{"error": "Error message"}` body
 
 **Example:**
@@ -388,6 +397,8 @@ Initiates a request to the specified module and streams responses back
 > To stop the stream, please call `/api/stop`
 
 **Request (POST):**
+
+> Maximum content length: `100 bytes`. Default rate limits: `10/minute`, `1/second`
 
 - Without authorization
 
@@ -484,6 +495,7 @@ Initiates a request to the specified module and streams responses back
 
 **Returns:**
 
+- ❌ Error codes `429`, `401` or `413` in case of rate limit, wrong token or too large request
 - ❌ In case of error: status code `500` and `{"error": "Error message"}` body
 
 **Example:**
@@ -502,6 +514,8 @@ $ curl --request POST --header "Content-Type: application/json" --data '{"chatgp
 Stops the specified module's streaming response (stops yielding from `/api/ask`)
 
 **Request (POST):**
+
+> Maximum content length: `100 bytes`. Default rate limits: `1/second`
 
 - Without authorization
 
@@ -525,6 +539,7 @@ Stops the specified module's streaming response (stops yielding from `/api/ask`)
 **Returns:**
 
 - ✔️ If the stream stopped successfully: status code `200` and `{}` body
+- ❌ Error codes `429`, `401` or `413` in case of rate limit, wrong token or too large request
 - ❌ In case of an error: status code `400` or `500` and `{"error": "Error message"}` body
 
 **Example:**
@@ -543,6 +558,8 @@ Clears the module's conversation history
 > Please call `/api/status` to check if the module is initialized and not busy **BEFORE** calling `/api/delete`
 
 **Request (POST):**
+
+> Maximum content length: `500 bytes`. Default rate limits: `10/minute`, `1/second`
 
 - Without authorization
 
@@ -595,6 +612,7 @@ Clears the module's conversation history
 **Returns:**
 
 - ✔️ If conversation deleted successfully: status code `200` and `{}` body
+- ❌ Error codes `429`, `401` or `413` in case of rate limit, wrong token or too large request
 - ❌ In case of an error: status code `400` or `500` and `{"error": "Error message"}` body
 
 **Example:**
@@ -615,6 +633,8 @@ Requests the module's session to close (in a separate, non-blocking thread)
 > After calling `/api/close`, please call `/api/status` to **check if the module's closing finished**
 
 **Request (POST):**
+
+> Maximum content length: `500 bytes`. Default rate limits: `10/minute`, `1/second`
 
 - Without authorization
 
@@ -638,11 +658,16 @@ Requests the module's session to close (in a separate, non-blocking thread)
 **Returns:**
 
 - ✔️ If requested successfully: status code `200` and `{}` body
+- ❌ Error codes `429`, `401` or `413` in case of rate limit, wrong token or too large request
 - ❌ In case of an error: status code `400` or `500` and `{"error": "Error message"}` body
 
 ----------
 
 ## 🔒 HTTPS server and token-based authorization
+
+> ⚠️ Better use proper SSL service and redirect to local port
+>
+> ⚠️ Don't use token-based authorization with bare HTTP (without any SSL). It's not safe!
 
 It's possible to start SSL (HTTPS) server instead of HTTP. For that, provide `--ssl` argument with path to certificate file and path to private key file.
 
@@ -682,4 +707,5 @@ $ lmao --configs "configs" --ip "0.0.0.0" --port "1312" --ssl certificate.crt pr
  * Running on https://127.0.0.1:1312
  * Running on https://192.168.0.3:1312
 2024-04-18 19:45:16 INFO     Press CTRL+C to quit
+...
 ```
