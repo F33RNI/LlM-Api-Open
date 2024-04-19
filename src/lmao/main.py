@@ -62,29 +62,32 @@ def logging_setup() -> None:
 
 def parse_args() -> argparse.Namespace:
     """Parses cli arguments
-    usage: lmao [-h] [-v] [-c CONFIGS] [-t TEST] [-i IP] [-p PORT] [-s SSL [SSL ...]] [--tokens TOKENS [TOKENS ...]]
-        [--rate-limits-default RATE_LIMITS_DEFAULT [RATE_LIMITS_DEFAULT ...]]
-        [--rate-limit-fast RATE_LIMIT_FAST] [--no-logging-init]
+    usage: lmao [-h] [-v] [-c CONFIGS] [-t TEST] [-i IP] [-p PORT] [-s SSL [SSL ...]] [--tokens-use TOKENS_USE [TOKENS_USE ...]]
+            [--tokens-manage TOKENS_MANAGE [TOKENS_MANAGE ...]] [--rate-limits-default RATE_LIMITS_DEFAULT [RATE_LIMITS_DEFAULT ...]] [--rate-limit-fast RATE_LIMIT_FAST]
+            [--no-logging-init]
 
     Unofficial open APIs for popular LLMs with self-hosted redirect capability
 
     options:
-    -h, --help            show this help message and exit
-    -v, --version         show program's version number and exit
-    -c CONFIGS, --configs CONFIGS
-                            path to configs directory with each module config file (Default: configs)
-    -t TEST, --test TEST  module name to test in cli instead of starting API server (eg. --test=chatgpt)
-    -i IP, --ip IP        API server Host (IP) (Default: localhost)
-    -p PORT, --port PORT  API server port (Default: 1312)
-    -s SSL [SSL ...], --ssl SSL [SSL ...]
-                            Paths to SSL certificate and private key (ex. --ssl "path/to/certificate.crt" "path/to/private.key")
-    --tokens TOKENS [TOKENS ...]
-                            API tokens to enable authorization (ex. --tokens "abcdefg12345" "AAAAATESTtest")
-    --rate-limits-default RATE_LIMITS_DEFAULT [RATE_LIMITS_DEFAULT ...]
-                            Rate limits for all API requests except /status and /stop (Default: --rate-limits-default "10/minute", "1/second")
-    --rate-limit-fast RATE_LIMIT_FAST
-                            Rate limit /status and /stop API requests (Default: "1/second")
-    --no-logging-init     specify to bypass logging initialization (will be set automatically when using --test)
+        -h, --help            show this help message and exit
+        -v, --version         show program's version number and exit
+        -c CONFIGS, --configs CONFIGS
+                                path to configs directory with each module config file (Default: configs)
+        -t TEST, --test TEST  module name to test in cli instead of starting API server (eg. --test=chatgpt)
+        -i IP, --ip IP        API server Host (IP) (Default: localhost)
+        -p PORT, --port PORT  API server port (Default: 1312)
+        -s SSL [SSL ...], --ssl SSL [SSL ...]
+                                Paths to SSL certificate and private key (ex. --ssl "path/to/certificate.crt" "path/to/private.key")
+        --tokens-use TOKENS_USE [TOKENS_USE ...]
+                                API tokens to enable authorization for /status, /ask, /stop and /delete (ex. --tokens-use "tokenForMyApp" "tokenForMyAnotherApp"
+                                "ultraPrivateTokeeeeeen")
+        --tokens-manage TOKENS_MANAGE [TOKENS_MANAGE ...]
+                                API tokens to enable authorization for /init and /close (ex. --tokens-manage "ultraPrivateTokeeeeeen")
+        --rate-limits-default RATE_LIMITS_DEFAULT [RATE_LIMITS_DEFAULT ...]
+                                Rate limits for all API requests except /status and /stop (Default: --rate-limits-default "10/minute", "1/second")
+        --rate-limit-fast RATE_LIMIT_FAST
+                                Rate limit /status and /stop API requests (Default: "1/second")
+        --no-logging-init     specify to bypass logging initialization (will be set automatically when using --test)
 
     Returns:
         argparse.Namespace: parsed arguments
@@ -145,11 +148,18 @@ def parse_args() -> argparse.Namespace:
         help='Paths to SSL certificate and private key (ex. --ssl "path/to/certificate.crt" "path/to/private.key")',
     )
     parser.add_argument(
-        "--tokens",
+        "--tokens-use",
         nargs="+",
         default=[],
         required=False,
-        help='API tokens to enable authorization (ex. --tokens "abcdefg12345" "AAAAATESTtest")',
+        help='API tokens to enable authorization for /status, /ask, /stop and /delete (ex. --tokens-use "tokenForMyApp" "tokenForMyAnotherApp" "ultraPrivateTokeeeeeen")',
+    )
+    parser.add_argument(
+        "--tokens-manage",
+        nargs="+",
+        default=[],
+        required=False,
+        help='API tokens to enable authorization for /init and /close (ex. --tokens-manage "ultraPrivateTokeeeeeen")',
     )
     parser.add_argument(
         "--rate-limits-default",
@@ -286,7 +296,8 @@ def main():
             config,
             rate_limits_default=args.rate_limits_default,
             rate_limit_fast=args.rate_limit_fast,
-            tokens=args.tokens,
+            tokens_use=args.tokens_use,
+            tokens_manage=args.tokens_manage,
         )
         if args.ssl and len(args.ssl) == 2:
             api.run(args.ip, args.port, certfile=args.ssl[0], keyfile=args.ssl[1])

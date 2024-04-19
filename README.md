@@ -675,37 +675,45 @@ Example:
 
 ```shell
 $ lmao --configs "configs" --ip "0.0.0.0" --port "1312" --ssl certificate.crt private.key
-2024-04-18 19:41:59 INFO     Logging setup is complete
-2024-04-18 19:41:59 INFO     Loading config files from configs directory
-2024-04-18 19:41:59 INFO     Adding config of ms_copilot module
-2024-04-18 19:41:59 INFO     Adding config of chatgpt module
+2024-04-19 02:09:10 INFO     Logging setup is complete
+2024-04-19 02:09:10 INFO     Loading config files from configs directory
+2024-04-19 02:09:10 INFO     Adding config of ms_copilot module
+2024-04-19 02:09:10 INFO     Adding config of chatgpt module
+2024-04-19 02:09:10 WARNING  No tokens provided. Everyone can use API
+2024-04-19 02:09:10 INFO     Rate limits for all API requests except /status and /stop: 10/minute, 1/second
+2024-04-19 02:09:10 INFO     Rate limits /status and /stop API requests: 1/second
  * Serving Flask app 'lmao.external_api'
  * Debug mode: off
-2024-04-18 19:41:59 INFO     WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+2024-04-19 02:09:10 INFO     WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
  * Running on all addresses (0.0.0.0)
  * Running on https://127.0.0.1:1312
  * Running on https://192.168.0.3:1312
-2024-04-18 19:41:59 INFO     Press CTRL+C to quit
+2024-04-19 02:09:10 INFO     Press CTRL+C to quit
 ...
 ```
 
-Also you can enable token-based authorization. For that, provide `--tokens` argument with a list of some strong random tokens.
+Also you can enable token-based authorization. For that, provide `--tokens-use` argument with a list of some strong random tokens. Requests that provided these tokens can access `/status`, `/ask`, `/stop` and `/delete`. For `/init` and `/stop`, provide `--tokens-manage` argument with a list of some REALLY strong random tokens
 
-Example (tokens are `naixae3eeNao6suu`, `kahMeixoo9un9OhR` and `ofi2ohRi8maish4x`):
+⚠️ Make sure you provided at least one token to `--tokens-manage` if you're using `--tokens-use`. Otherwise **EVERYONE CAN ACCESS** `/init` and `/stop`
+
+Example (tokens for `/status`, `/ask`, `/stop` and `/delete`: `naixae3eeNao6suu`, `kahMeixoo9un9OhR`. Token for `/init` and `/stop`: `ofi2ohRi8maish4x`):
 
 ```shell
-$ lmao --configs "configs" --ip "0.0.0.0" --port "1312" --ssl certificate.crt private.key --tokens naixae3eeNao6suu kahMeixoo9un9OhR ofi2ohRi8maish4x
-2024-04-18 19:45:16 INFO     Logging setup is complete
-2024-04-18 19:45:16 INFO     Loading config files from configs directory
-2024-04-18 19:45:16 INFO     Adding config of ms_copilot module
-2024-04-18 19:45:16 INFO     Adding config of chatgpt module
-2024-04-18 19:45:16 INFO     Token-based authorization enabled
+$ lmao --configs "configs" --ip "0.0.0.0" --port "1312" --ssl certificate.crt private.key --tokens-use naixae3eeNao6suu kahMeixoo9un9OhR --tokens-manage ofi2ohRi8maish4x
+2024-04-19 02:07:02 INFO     Logging setup is complete
+2024-04-19 02:07:02 INFO     Loading config files from configs directory
+2024-04-19 02:07:02 INFO     Adding config of ms_copilot module
+2024-04-19 02:07:02 INFO     Adding config of chatgpt module
+2024-04-19 02:07:02 INFO     Token-based authorization enabled. Provided 2 tokens-use
+2024-04-19 02:07:02 INFO     Token-based authorization enabled. Provided 1 tokens-manage
+2024-04-19 02:07:02 INFO     Rate limits for all API requests except /status and /stop: 10/minute, 1/second
+2024-04-19 02:07:02 INFO     Rate limits /status and /stop API requests: 1/second
  * Serving Flask app 'lmao.external_api'
  * Debug mode: off
-2024-04-18 19:45:16 INFO     WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+2024-04-19 02:07:02 INFO     WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
  * Running on all addresses (0.0.0.0)
- * Running on https://127.0.0.1:1312
- * Running on https://192.168.0.3:1312
-2024-04-18 19:45:16 INFO     Press CTRL+C to quit
+ * Running on http://127.0.0.1:1312
+ * Running on http://192.168.0.3:1312
+2024-04-19 02:07:02 INFO     Press CTRL+C to quit
 ...
 ```

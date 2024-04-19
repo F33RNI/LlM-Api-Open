@@ -91,16 +91,28 @@ class ExternalAPI:
         config: Dict,
         rate_limits_default: List[str] or None = None,
         rate_limit_fast: str = "1/second",
-        tokens: List or None = None,
+        tokens_use: List or None = None,
+        tokens_manage: List or None = None,
     ):
         self.config = config
         self.rate_limit_fast = rate_limit_fast
-        self.tokens = tokens
+        self.tokens_use = tokens_use
+        self.tokens_manage = tokens_manage
 
-        if not self.tokens or len(self.tokens) == 0:
-            self.tokens = None
-        if self.tokens:
-            logging.info("Token-based authorization enabled")
+        if not self.tokens_use or len(self.tokens_use) == 0:
+            self.tokens_use = None
+        if not self.tokens_manage or len(self.tokens_manage) == 0:
+            self.tokens_manage = None
+
+        if self.tokens_use and not self.tokens_manage:
+            logging.warning("NO --tokens-manage PROVIDED! ANYONE CAN USE /init AND /close")
+
+        if self.tokens_use:
+            logging.info(f"Token-based authorization enabled. Provided {len(self.tokens_use)} tokens-use")
+        if self.tokens_manage:
+            logging.info(f"Token-based authorization enabled. Provided {len(self.tokens_manage)} tokens-manage")
+        if not self.tokens_use and not self.tokens_manage:
+            logging.warning("No tokens provided. Everyone can use API")
 
         if rate_limits_default is None:
             rate_limits_default = ["10/minute", "1/second"]
@@ -119,7 +131,7 @@ class ExternalAPI:
 
         @self.app.route("/api/init", methods=["POST"])
         @limit_content_length(100)
-        @check_auth(self.tokens)
+        @check_auth(self.tokens_manage)
         def init() -> tuple[Response, Literal]:
             """Begins module initialization
             Please call /api/status to check if module is initialized BEFORE calling /api/init
@@ -190,7 +202,7 @@ class ExternalAPI:
         @self.app.route("/api/status", methods=["POST"])
         @self.limiter.limit(self.rate_limit_fast)
         @limit_content_length(100)
-        @check_auth(self.tokens)
+        @check_auth(self.tokens_use)
         def status() -> tuple[Response, Literal]:
             """Retrieves current status of all modules
 
@@ -240,7 +252,7 @@ class ExternalAPI:
 
         @self.app.route("/api/ask", methods=["POST"])
         @limit_content_length(3 * 1024 * 1024)
-        @check_auth(self.tokens)
+        @check_auth(self.tokens_use)
         def ask():
             """Initiates a request to the specified module and streams responses back
             Please call /api/status to check if module is initialized and not busy BEFORE calling /api/ask
@@ -335,7 +347,7 @@ class ExternalAPI:
         @self.app.route("/api/stop", methods=["POST"])
         @self.limiter.limit(self.rate_limit_fast)
         @limit_content_length(100)
-        @check_auth(self.tokens)
+        @check_auth(self.tokens_use)
         def response_stop() -> tuple[Response, Literal]:
             """Stops the specified module's streaming response (stops yielding in /ask)
 
@@ -374,7 +386,7 @@ class ExternalAPI:
 
         @self.app.route("/api/delete", methods=["POST"])
         @limit_content_length(500)
-        @check_auth(self.tokens)
+        @check_auth(self.tokens_use)
         def delete_conversation() -> tuple[Response, Literal]:
             """Clears module's conversation history
             Please call /api/status to check if module is initialized and not busy BEFORE calling /api/delete
@@ -424,7 +436,7 @@ class ExternalAPI:
 
         @self.app.route("/api/close", methods=["POST"])
         @limit_content_length(100)
-        @check_auth(self.tokens)
+        @check_auth(self.tokens_manage)
         def close():
             """Request module's session to close (in a separate thread)
             Please call /api/status to check if module is initialized and it's status is Idle or Failed
