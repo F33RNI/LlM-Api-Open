@@ -27,7 +27,7 @@ import json
 import logging
 import ssl
 import threading
-from typing import Dict, List, Literal, Tuple
+from typing import Dict, List, Literal
 
 from flask import Flask, request, Response, jsonify
 
