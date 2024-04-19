@@ -128,6 +128,7 @@ class ExternalAPI:
         @self.app.route("/index", methods=["POST"])
         @self.app.route("/index.html", methods=["POST"])
         @self.app.route("/index.php", methods=["POST"])
+        @self.app.route("/api", methods=["POST"])
         @self.app.route("/api/status", methods=["POST"])
         def status() -> tuple[Response, Literal]:
             """Retrieves current status of all modules
