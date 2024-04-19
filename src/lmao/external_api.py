@@ -90,7 +90,7 @@ class ExternalAPI:
         self,
         config: Dict,
         rate_limits_default: List[str] or None = None,
-        rate_limit_fast: str = "1/second",
+        rate_limit_fast: str = "2/second",
         tokens_use: List or None = None,
         tokens_manage: List or None = None,
     ):

@@ -86,7 +86,7 @@ def parse_args() -> argparse.Namespace:
         --rate-limits-default RATE_LIMITS_DEFAULT [RATE_LIMITS_DEFAULT ...]
                                 Rate limits for all API requests except /status and /stop (Default: --rate-limits-default "10/minute", "1/second")
         --rate-limit-fast RATE_LIMIT_FAST
-                                Rate limit /status and /stop API requests (Default: "1/second")
+                                Rate limit /status and /stop API requests (Default: "2/second")
         --no-logging-init     specify to bypass logging initialization (will be set automatically when using --test)
 
     Returns:
@@ -171,9 +171,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--rate-limit-fast",
         type=str,
-        default="1/second",
+        default="2/second",
         required=False,
-        help='Rate limit /status and /stop API requests (Default: "1/second")',
+        help='Rate limit /status and /stop API requests (Default: "2/second")',
     )
     parser.add_argument(
         "--no-logging-init",
