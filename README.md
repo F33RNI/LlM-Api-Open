@@ -394,11 +394,11 @@ $ curl --request POST --header "Content-Type: application/json" --data '{}' http
 
 ### 🌐 Send request and get stream response `/api/ask`
 
-Initiates a request to the specified module and streams responses back
+Initiates a request to the specified module and streams responses back (if `no_stream` is `false` or not specified)
 
 > Please call `/api/status` to check if the module is initialized and not busy **BEFORE** calling `/api/ask`
 >
-> To stop the stream, please call `/api/stop`
+> To stop the stream / response, please call `/api/stop`
 
 **Request (POST):**
 
@@ -414,7 +414,8 @@ Initiates a request to the specified module and streams responses back
             "prompt": "Text request to send to the module",
             "conversation_id": "Optional conversation ID (to continue existing chat) or empty for a new conversation",
             "convert_to_markdown": true or false //(Optional flag for converting response to Markdown)
-        }
+        },
+        "no_stream": true if you need to receive only the last response
     }
     ```
 
@@ -428,7 +429,8 @@ Initiates a request to the specified module and streams responses back
             "conversation_id": "empty string or existing conversation ID",
             "style": "creative" / "balanced" / "precise",
             "convert_to_markdown": True or False
-        }
+        },
+        "no_stream": true if you need to receive only the last response
     }
     ```
 
@@ -445,7 +447,8 @@ Initiates a request to the specified module and streams responses back
             "conversation_id": "Optional conversation ID (to continue existing chat) or empty for a new conversation",
             "convert_to_markdown": true or false //(Optional flag for converting response to Markdown)
         },
-        "token": "YourStrongRandomToken from --tokens-use argument"
+        "token": "YourStrongRandomToken from --tokens-use argument",
+        "no_stream": true if you need to receive only the last response
     }
     ```
 
@@ -460,11 +463,12 @@ Initiates a request to the specified module and streams responses back
             "style": "creative" / "balanced" / "precise",
             "convert_to_markdown": True or False
         },
-        "token": "YourStrongRandomToken from --tokens-use argument"
+        "token": "YourStrongRandomToken from --tokens-use argument",
+        "no_stream": true if you need to receive only the last response
     }
     ```
 
-**Yields:**
+**Yields (or Returns if `"no_stream"` is specified):**
 
 - ✔️ A stream of JSON objects containing module responses
 

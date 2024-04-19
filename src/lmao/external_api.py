@@ -265,7 +265,8 @@ class ExternalAPI:
                             "conversation_id": "Optional conversation ID (to continue existing chat) or empty for a new conversation",
                             "convert_to_markdown": true or false //(Optional flag for converting response to Markdown)
                         },
-                        "token": "optional token if --tokens-use argument provided"
+                        "token": "optional token if --tokens-use argument provided",
+                        "no_stream": True if you need to receive only the last response
                     }
                 For Microsoft Copilot:
                     {
@@ -277,7 +278,8 @@ class ExternalAPI:
                             "convert_to_markdown": True or False,
                             "token": "optional token if --tokens-use argument provided"
                         },
-                        "token": "optional token if --tokens-use argument provided"
+                        "token": "optional token if --tokens-use argument provided",
+                        "no_stream": True if you need to receive only the last response
                     }
                 Maximum content length: 3MB
 
@@ -331,7 +333,14 @@ class ExternalAPI:
                 if module.status != STATUS_IDLE:
                     return jsonify({"error": f"{module_name} status is not {STATUS_TO_STR[STATUS_IDLE]}"}), 400
 
-                # Response generator
+                # Ask and wait
+                if request_json.get("no_stream"):
+                    response_temp = {}
+                    for response in module.ask(prompt_request):
+                        response_temp = response
+                    return jsonify(response_temp), 200
+
+                # Response generator (for stream)
                 def _stream_response():
                     with self.lock:
                         for response in module.ask(prompt_request):
