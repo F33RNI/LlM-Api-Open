@@ -90,7 +90,7 @@ class ExternalAPI:
         self,
         config: Dict,
         rate_limits_default: List[str] or None = None,
-        rate_limit_fast: str = "2/second",
+        rate_limit_fast: str = "1/second",
         tokens_use: List or None = None,
         tokens_manage: List or None = None,
     ):
@@ -200,7 +200,7 @@ class ExternalAPI:
         @self.app.route("/index.php", methods=["POST"])
         @self.app.route("/api", methods=["POST"])
         @self.app.route("/api/status", methods=["POST"])
-        @self.limiter.limit(self.rate_limit_fast)
+        @self.limiter.exempt
         @limit_content_length(100)
         @check_auth(self.tokens_use)
         def status() -> tuple[Response, Literal]:

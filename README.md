@@ -175,9 +175,9 @@ options:
   --tokens-manage TOKENS_MANAGE [TOKENS_MANAGE ...]
                         API tokens to enable authorization for /init and /close (ex. --tokens-manage "ultraPrivateTokeeeeeen")
   --rate-limits-default RATE_LIMITS_DEFAULT [RATE_LIMITS_DEFAULT ...]
-                        Rate limits for all API requests except /status and /stop (Default: --rate-limits-default "10/minute", "1/second")
+                        Rate limits for all API requests except /stop (Default: --rate-limits-default "10/minute", "1/second")
   --rate-limit-fast RATE_LIMIT_FAST
-                        Rate limit /status and /stop API requests (Default: "2/second")
+                        Rate limit /stop API request (Default: "1/second")
   --no-logging-init     specify to bypass logging initialization (will be set automatically when using --test)
 
 examples:
@@ -347,7 +347,7 @@ Retrieves the current status of all modules
 
 **Request (POST):**
 
-> Maximum content length: `100 bytes`. Default rate limits: `1/second`
+> Maximum content length: `100 bytes`. No rate limit
 
 - Without authorization
 

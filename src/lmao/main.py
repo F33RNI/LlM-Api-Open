@@ -84,9 +84,9 @@ def parse_args() -> argparse.Namespace:
         --tokens-manage TOKENS_MANAGE [TOKENS_MANAGE ...]
                                 API tokens to enable authorization for /init and /close (ex. --tokens-manage "ultraPrivateTokeeeeeen")
         --rate-limits-default RATE_LIMITS_DEFAULT [RATE_LIMITS_DEFAULT ...]
-                                Rate limits for all API requests except /status and /stop (Default: --rate-limits-default "10/minute", "1/second")
+                                Rate limits for all API requests except /stop (Default: --rate-limits-default "10/minute", "1/second")
         --rate-limit-fast RATE_LIMIT_FAST
-                                Rate limit /status and /stop API requests (Default: "2/second")
+                                Rate limit /stop API requests (Default: "1/second")
         --no-logging-init     specify to bypass logging initialization (will be set automatically when using --test)
 
     Returns:
@@ -166,14 +166,14 @@ def parse_args() -> argparse.Namespace:
         nargs="+",
         default=["10/minute", "1/second"],
         required=False,
-        help='Rate limits for all API requests except /status and /stop (Default: --rate-limits-default "10/minute", "1/second")',
+        help='Rate limits for all API requests except /stop (Default: --rate-limits-default "10/minute", "1/second")',
     )
     parser.add_argument(
         "--rate-limit-fast",
         type=str,
-        default="2/second",
+        default="1/second",
         required=False,
-        help='Rate limit /status and /stop API requests (Default: "2/second")',
+        help='Rate limit /stop API requests (Default: "2/second")',
     )
     parser.add_argument(
         "--no-logging-init",
