@@ -151,9 +151,10 @@ module.close(blocking=True)
 
 ## 💻 CLI example
 
-```shell
+```text
 $ lmao --help        
-usage: lmao [-h] [-v] [-c CONFIG] [-t TEST] [-i IP] [-p PORT] [--no-logging-init]
+usage: lmao [-h] [-v] [-c CONFIGS] [-t TEST] [-i IP] [-p PORT] [-s SSL [SSL ...]] [--tokens TOKENS [TOKENS ...]]
+            [--no-logging-init]
 
 Unofficial open APIs for popular LLMs with self-hosted redirect capability
 
@@ -165,12 +166,18 @@ options:
   -t TEST, --test TEST  module name to test in cli instead of starting API server (eg. --test=chatgpt)
   -i IP, --ip IP        API server Host (IP) (Default: localhost)
   -p PORT, --port PORT  API server port (Default: 1312)
+  -s SSL [SSL ...], --ssl SSL [SSL ...]
+                        Paths to SSL certificate and private key (ex. --ssl "path/to/certificate.crt"
+                        "path/to/private.key")
+  --tokens TOKENS [TOKENS ...]
+                        API tokens to enable authorization (ex. --tokens "abcdefg12345" "AAAAATESTtest")
   --no-logging-init     specify to bypass logging initialization (will be set automatically when using --test)
 
 examples:
   lmao --test=chatgpt
   lmao --ip="0.0.0.0" --port=1312
   lmao --ip="0.0.0.0" --port=1312 --no-logging-init
+  lmao --ip "0.0.0.0" --port=1312 --ssl certificate.crt private.key --tokens myStrongRandomToken myStrongRandomToken2
 ```
 
 ```shell
@@ -187,6 +194,8 @@ chatgpt > Hello! How can I assist you today?
 ## 🌐 API example
 
 ### Start server
+
+> Please see `🔒 HTTPS server and token-based authorization` section for more info about HTTPS server and tokens
 
 ```shell
 $ lmao --configs "configs" --ip "0.0.0.0" --port "1312" 
@@ -289,11 +298,24 @@ Begins module initialization (in a separate, non-blocking thread)
 
 **Request (POST):**
 
-```json
-{
-    "module": "name of module from MODULES"
-}
-```
+- Without authorization
+
+    ```json
+    {
+        "module": "name of module from MODULES"
+    }
+    ```
+
+- With authorization
+
+    > Please see `🔒 HTTPS server and token-based authorization` section for more info
+
+    ```json
+    {
+        "module": "name of module from MODULES",
+        "token": "YourStrongRandomToken from --tokens argument"
+    }
+    ```
 
 **Returns:**
 
@@ -313,11 +335,23 @@ $ curl --request POST --header "Content-Type: application/json" --data '{"module
 
 Retrieves the current status of all modules
 
-**Request (GET or POST):**
+**Request (POST):**
 
-```json
-{}
-```
+- Without authorization
+
+    ```json
+    {}
+    ```
+
+- With authorization
+
+    > Please see `🔒 HTTPS server and token-based authorization` section for more info
+
+    ```json
+    {
+        "token": "YourStrongRandomToken from --tokens argument"
+    }
+    ```
 
 **Returns:**
 
@@ -339,7 +373,7 @@ Retrieves the current status of all modules
 **Example:**
 
 ```shell
-$ curl --request GET http://localhost:1312/api/status
+$ curl --request POST --header "Content-Type: application/json" --data '{}' http://localhost:1312/api/status
 [{"error":"","module":"chatgpt","status_code":2,"status_name":"Idle"}]
 ```
 
@@ -355,31 +389,65 @@ Initiates a request to the specified module and streams responses back
 
 **Request (POST):**
 
-> For **ChatGPT**:
+- Without authorization
 
-```text
-{
-    "chatgpt": {
-        "prompt": "Text request to send to the module",
-        "conversation_id": "Optional conversation ID (to continue existing chat) or empty for a new conversation",
-        "convert_to_markdown": true or false //(Optional flag for converting response to Markdown)
+    > For **ChatGPT**:
+
+    ```text
+    {
+        "chatgpt": {
+            "prompt": "Text request to send to the module",
+            "conversation_id": "Optional conversation ID (to continue existing chat) or empty for a new conversation",
+            "convert_to_markdown": true or false //(Optional flag for converting response to Markdown)
+        }
     }
-}
-```
+    ```
 
-> For **Microsoft Copilot**:
+    > For **Microsoft Copilot**:
 
-```text
-{
-    "ms_copilot": {
-        "prompt": "Text request",
-        "image": image as base64 to include into request,
-        "conversation_id": "empty string or existing conversation ID",
-        "style": "creative" / "balanced" / "precise",
-        "convert_to_markdown": True or False
+    ```text
+    {
+        "ms_copilot": {
+            "prompt": "Text request",
+            "image": image as base64 to include into request,
+            "conversation_id": "empty string or existing conversation ID",
+            "style": "creative" / "balanced" / "precise",
+            "convert_to_markdown": True or False
+        }
     }
-}
-```
+    ```
+
+- With authorization
+
+    > Please see `🔒 HTTPS server and token-based authorization` section for more info
+
+    > For **ChatGPT**:
+
+    ```text
+    {
+        "chatgpt": {
+            "prompt": "Text request to send to the module",
+            "conversation_id": "Optional conversation ID (to continue existing chat) or empty for a new conversation",
+            "convert_to_markdown": true or false //(Optional flag for converting response to Markdown)
+        },
+        "token": "YourStrongRandomToken from --tokens argument"
+    }
+    ```
+
+    > For **Microsoft Copilot**:
+
+    ```text
+    {
+        "ms_copilot": {
+            "prompt": "Text request",
+            "image": image as base64 to include into request,
+            "conversation_id": "empty string or existing conversation ID",
+            "style": "creative" / "balanced" / "precise",
+            "convert_to_markdown": True or False
+        },
+        "token": "YourStrongRandomToken from --tokens argument"
+    }
+    ```
 
 **Yields:**
 
@@ -435,11 +503,24 @@ Stops the specified module's streaming response (stops yielding from `/api/ask`)
 
 **Request (POST):**
 
-```json
-{
-    "module": "Name of the module from MODULES"
-}
-```
+- Without authorization
+
+    ```json
+    {
+        "module": "Name of the module from MODULES"
+    }
+    ```
+
+- With authorization
+
+    > Please see `🔒 HTTPS server and token-based authorization` section for more info
+
+    ```json
+    {
+        "module": "Name of the module from MODULES",
+        "token": "YourStrongRandomToken from --tokens argument"
+    }
+    ```
 
 **Returns:**
 
@@ -461,17 +542,55 @@ Clears the module's conversation history
 
 > Please call `/api/status` to check if the module is initialized and not busy **BEFORE** calling `/api/delete`
 
-**Request:**
+**Request (POST):**
 
-For ChatGPT:
+- Without authorization
 
-```json
-{
-    "chatgpt": {
-        "conversation_id": "ID of conversation to delete or empty to delete the top one"
+    > For **ChatGPT**:
+
+    ```json
+    {
+        "chatgpt": {
+            "conversation_id": "ID of conversation to delete or empty to delete the top one"
+        }
     }
-}
-```
+    ```
+
+    > For **Microsoft Copilot**:
+
+    ```json
+    {
+        "ms_copilot": {
+            "conversation_id": "ID of conversation to delete or empty to delete the top one"
+        }
+    }
+    ```
+
+- With authorization
+
+    > Please see `🔒 HTTPS server and token-based authorization` section for more info
+
+    > For **ChatGPT**:
+
+    ```json
+    {
+        "chatgpt": {
+            "conversation_id": "ID of conversation to delete or empty to delete the top one"
+        },
+        "token": "YourStrongRandomToken from --tokens argument"
+    }
+    ```
+
+    > For **Microsoft Copilot**:
+
+    ```json
+    {
+        "ms_copilot": {
+            "conversation_id": "ID of conversation to delete or empty to delete the top one"
+        },
+        "token": "YourStrongRandomToken from --tokens argument"
+    }
+    ```
 
 **Returns:**
 
@@ -495,15 +614,72 @@ Requests the module's session to close (in a separate, non-blocking thread)
 >
 > After calling `/api/close`, please call `/api/status` to **check if the module's closing finished**
 
-**Request:**
+**Request (POST):**
 
-```json
-{
-    "module": "Name of the module from MODULES"
-}
-```
+- Without authorization
+
+    ```json
+    {
+        "module": "Name of the module from MODULES"
+    }
+    ```
+
+- With authorization
+
+    > Please see `🔒 HTTPS server and token-based authorization` section for more info
+
+    ```json
+    {
+        "module": "Name of the module from MODULES",
+        "token": "YourStrongRandomToken from --tokens argument"
+    }
+    ```
 
 **Returns:**
 
 - ✔️ If requested successfully: status code `200` and `{}` body
 - ❌ In case of an error: status code `400` or `500` and `{"error": "Error message"}` body
+
+----------
+
+## 🔒 HTTPS server and token-based authorization
+
+It's possible to start SSL (HTTPS) server instead of HTTP. For that, provide `--ssl` argument with path to certificate file and path to private key file.
+
+Example:
+
+```shell
+$ lmao --configs "configs" --ip "0.0.0.0" --port "1312" --ssl certificate.crt private.key
+2024-04-18 19:41:59 INFO     Logging setup is complete
+2024-04-18 19:41:59 INFO     Loading config files from configs directory
+2024-04-18 19:41:59 INFO     Adding config of ms_copilot module
+2024-04-18 19:41:59 INFO     Adding config of chatgpt module
+ * Serving Flask app 'lmao.external_api'
+ * Debug mode: off
+2024-04-18 19:41:59 INFO     WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on https://127.0.0.1:1312
+ * Running on https://192.168.0.3:1312
+2024-04-18 19:41:59 INFO     Press CTRL+C to quit
+...
+```
+
+Also you can enable token-based authorization. For that, provide `--tokens` argument with a list of some strong random tokens.
+
+Example (tokens are `naixae3eeNao6suu`, `kahMeixoo9un9OhR` and `ofi2ohRi8maish4x`):
+
+```shell
+$ lmao --configs "configs" --ip "0.0.0.0" --port "1312" --ssl certificate.crt private.key --tokens naixae3eeNao6suu kahMeixoo9un9OhR ofi2ohRi8maish4x
+2024-04-18 19:45:16 INFO     Logging setup is complete
+2024-04-18 19:45:16 INFO     Loading config files from configs directory
+2024-04-18 19:45:16 INFO     Adding config of ms_copilot module
+2024-04-18 19:45:16 INFO     Adding config of chatgpt module
+2024-04-18 19:45:16 INFO     Token-based authorization enabled
+ * Serving Flask app 'lmao.external_api'
+ * Debug mode: off
+2024-04-18 19:45:16 INFO     WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on https://127.0.0.1:1312
+ * Running on https://192.168.0.3:1312
+2024-04-18 19:45:16 INFO     Press CTRL+C to quit
+```

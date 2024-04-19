@@ -62,7 +62,8 @@ def logging_setup() -> None:
 
 def parse_args() -> argparse.Namespace:
     """Parses cli arguments
-    usage: lmao [-h] [-v] [-c CONFIG] [-t TEST] [-i IP] [-p PORT] [--no-logging-init]
+    usage: lmao [-h] [-v] [-c CONFIGS] [-t TEST] [-i IP] [-p PORT] [-s SSL [SSL ...]] [--tokens TOKENS [TOKENS ...]]
+            [--no-logging-init]
 
     Unofficial open APIs for popular LLMs with self-hosted redirect capability
 
@@ -74,6 +75,11 @@ def parse_args() -> argparse.Namespace:
     -t TEST, --test TEST  module name to test in cli instead of starting API server (eg. --test=chatgpt)
     -i IP, --ip IP        API server Host (IP) (Default: localhost)
     -p PORT, --port PORT  API server port (Default: 1312)
+    -s SSL [SSL ...], --ssl SSL [SSL ...]
+                            Paths to SSL certificate and private key (ex. --ssl "path/to/certificate.crt"
+                            "path/to/private.key")
+    --tokens TOKENS [TOKENS ...]
+                            API tokens to enable authorization (ex. --tokens "abcdefg12345" "AAAAATESTtest")
     --no-logging-init     specify to bypass logging initialization (will be set automatically when using --test)
 
     Returns:
@@ -84,7 +90,8 @@ def parse_args() -> argparse.Namespace:
     epilog = """examples:
   lmao --test=chatgpt
   lmao --ip="0.0.0.0" --port=1312
-  lmao --ip="0.0.0.0" --port=1312 --no-logging-init"""
+  lmao --ip="0.0.0.0" --port=1312 --no-logging-init
+  lmao --ip "0.0.0.0" --port=1312 --ssl certificate.crt private.key --tokens myStrongRandomToken myStrongRandomToken2"""
 
     parser = argparse.ArgumentParser(
         prog="lmao",
@@ -124,6 +131,21 @@ def parse_args() -> argparse.Namespace:
         default=int(os.getenv("PORT", str(_PORT_DEFAULT))),
         required=False,
         help=f"API server port (Default: {int(os.getenv('PORT', str(_PORT_DEFAULT)))})",
+    )
+    parser.add_argument(
+        "-s",
+        "--ssl",
+        nargs="+",
+        default=[],
+        required=False,
+        help='Paths to SSL certificate and private key (ex. --ssl "path/to/certificate.crt" "path/to/private.key")',
+    )
+    parser.add_argument(
+        "--tokens",
+        nargs="+",
+        default=[],
+        required=False,
+        help='API tokens to enable authorization (ex. --tokens "abcdefg12345" "AAAAATESTtest")',
     )
     parser.add_argument(
         "--no-logging-init",
@@ -238,8 +260,8 @@ def main():
 
     # Start API server if no --test mode specified
     else:
-        api = ExternalAPI(config)
-        api.run(args.ip, args.port)
+        api = ExternalAPI(config, tokens=args.tokens)
+        api.run(args.ip, args.port, ssl_context=tuple(args.ssl))
 
 
 if __name__ == "__main__":

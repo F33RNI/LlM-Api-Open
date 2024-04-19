@@ -11,3 +11,5 @@ package-lock.json
 ChatGPT_cookies.json
 MS_Copilot_cookies.json
 test.py
+certificate.*
+private.*

@@ -26,7 +26,7 @@ import atexit
 import json
 import logging
 import threading
-from typing import Dict, Literal
+from typing import Dict, List, Literal, Tuple
 
 from flask import Flask, request, Response, jsonify
 
@@ -39,10 +39,19 @@ from lmao.module_wrapper import (
     STATUS_TO_STR,
 )
 
+# 401 error
+NOT_AUTHORIZED_ERROR_TEXT = "Not authorized"
+
 
 class ExternalAPI:
-    def __init__(self, config: Dict):
+    def __init__(self, config: Dict, tokens: List or None = None):
         self.config = config
+        self.tokens = tokens
+
+        if not self.tokens or len(self.tokens) == 0:
+            self.tokens = None
+        if self.tokens:
+            logging.info("Token-based authorization enabled")
 
         self.app = Flask(__name__)
         self.lock = threading.Lock()
@@ -58,17 +67,26 @@ class ExternalAPI:
 
             Request:
                 {
-                    "module": "name of module from MODULES"
+                    "module": "name of module from MODULES",
+                    "token": "optional token if --tokens argument provided"
                 }
 
             Returns:
                 tuple[Response, Literal]: {}, 200 if everything is ok
                 or
-                {"error": "Error message"}, 400 or 500 in case of error
+                {"error": "Error message"}, 400 / 401 or 500 in case of error
             """
             try:
+                # Parse request as JSON
+                request_json = request.get_json()
+
+                # Check token
+                if self.tokens:
+                    if "token" not in request_json or request_json["token"] not in self.tokens:
+                        return (jsonify({"error": NOT_AUTHORIZED_ERROR_TEXT}), 401)
+
                 # Extract and check module name
-                module_name = request.get_json().get("module")
+                module_name = request_json.get("module")
                 if module_name is None:
                     return (jsonify({"error": '"module" not specified'}), 400)
                 if module_name not in MODULES:
@@ -105,15 +123,18 @@ class ExternalAPI:
                 logging.error(f"/init error: {e}")
                 return jsonify({"error": e}), 500
 
-        @self.app.route("/", methods=["GET", "POST"])
-        @self.app.route("/index", methods=["GET", "POST"])
-        @self.app.route("/index.html", methods=["GET", "POST"])
-        @self.app.route("/index.php", methods=["GET", "POST"])
-        @self.app.route("/api/status", methods=["GET", "POST"])
+        @self.app.route("/", methods=["POST"])
+        @self.app.route("/index", methods=["POST"])
+        @self.app.route("/index.html", methods=["POST"])
+        @self.app.route("/index.php", methods=["POST"])
+        @self.app.route("/api/status", methods=["POST"])
         def status() -> tuple[Response, Literal]:
             """Retrieves current status of all modules
 
-            Request: empty
+            Request:
+                {
+                    "token": "optional token if --tokens argument provided"
+                }
 
             Returns:
                 tuple[Response, Literal]: [
@@ -125,9 +146,16 @@ class ExternalAPI:
                     }
                 ], 200 if no errors while iterating modules
                 or
-                {"error": "Error message"}, 500 in case of error
+                {"error": "Error message"}, 401 or 500 in case of error
             """
             try:
+                # Check token
+                if self.tokens:
+                    request_json = request.get_json()
+                    if "token" not in request_json or request_json["token"] not in self.tokens:
+                        return (jsonify({"error": NOT_AUTHORIZED_ERROR_TEXT}), 401)
+
+                # Read and add statuses
                 statuses = []
                 for module_name, module in self.modules.items():
                     try:
@@ -158,7 +186,8 @@ class ExternalAPI:
                             "prompt": "Text request to send to the module",
                             "conversation_id": "Optional conversation ID (to continue existing chat) or empty for a new conversation",
                             "convert_to_markdown": true or false //(Optional flag for converting response to Markdown)
-                        }
+                        },
+                        "token": "optional token if --tokens argument provided"
                     }
                 For Microsoft Copilot:
                     {
@@ -167,8 +196,10 @@ class ExternalAPI:
                             "image": image as base64 to include into request,
                             "conversation_id": "empty string or existing conversation ID",
                             "style": "creative" / "balanced" / "precise",
-                            "convert_to_markdown": True or False
-                        }
+                            "convert_to_markdown": True or False,
+                            "token": "optional token if --tokens argument provided"
+                        },
+                        "token": "optional token if --tokens argument provided"
                     }
 
             Yields: A stream of JSON objects containing module responses.
@@ -194,16 +225,23 @@ class ExternalAPI:
                     "suggestions": ["array of suggestions of the requests"]
                 }
 
-            Returns: {"error": "Error message"}, 500 in case of error
+            Returns: {"error": "Error message"}, 401 or 500 in case of error
             """
             try:
+                # Parse request as JSON
+                request_json = request.get_json()
+
+                # Check token
+                if self.tokens:
+                    if "token" not in request_json or request_json["token"] not in self.tokens:
+                        return (jsonify({"error": NOT_AUTHORIZED_ERROR_TEXT}), 401)
+
                 # Check request
-                prompt = request.get_json()
-                if prompt is None or len(prompt.items()) == 0:
+                if request_json is None or len(request_json.items()) == 0:
                     return (jsonify({"error": "Empty request"}), 400)
 
                 # Extract prompt data
-                module_name, prompt_request = list(prompt.items())[0]
+                module_name, prompt_request = list(request_json.items())[0]
 
                 # Check module
                 module = self.modules.get(module_name)
@@ -225,23 +263,32 @@ class ExternalAPI:
                 logging.error(f"/ask error: {e}")
                 return jsonify({"error": e}), 500
 
-        @self.app.route("/api/stop", methods=["GET", "POST"])
+        @self.app.route("/api/stop", methods=["POST"])
         def response_stop() -> tuple[Response, Literal]:
             """Stops the specified module's streaming response (stops yielding in /ask)
 
             Request:
                 {
-                    "module": "Name of the module from MODULES"
+                    "module": "Name of the module from MODULES",
+                    "token": "optional token if --tokens argument provided"
                 }
 
             Returns:
                 tuple[Response, Literal]: {}, 200 if the stream stopped successfully
                 or
-                {"error": "Error message"}, 400 or 500 in case of error
+                {"error": "Error message"}, 400 / 401 or 500 in case of error
             """
             try:
+                # Parse request as JSON
+                request_json = request.get_json()
+
+                # Check token
+                if self.tokens:
+                    if "token" not in request_json or request_json["token"] not in self.tokens:
+                        return (jsonify({"error": NOT_AUTHORIZED_ERROR_TEXT}), 401)
+
                 # Extract module name
-                module_name = request.get_json().get("module")
+                module_name = request_json.get("module")
                 if module_name is None:
                     return jsonify({"error": '"module" not specified'}), 400
 
@@ -270,22 +317,30 @@ class ExternalAPI:
                     // For ChatGPT
                     "module": {
                         "conversation_id": "ID of conversation to delete or empty to delete the top one"
-                    }
+                    },
+                    "token": "optional token if --tokens argument provided"
                 }
 
             Returns:
                 tuple[Response, Literal]: {}, 200 if conversation deleted successfully
                 or
-                {"error": "Error message"}, 400 or 500 in case of error
+                {"error": "Error message"}, 400 / 401 or 500 in case of error
             """
             try:
+                # Parse request as JSON
+                request_json = request.get_json()
+
+                # Check token
+                if self.tokens:
+                    if "token" not in request_json or request_json["token"] not in self.tokens:
+                        return (jsonify({"error": NOT_AUTHORIZED_ERROR_TEXT}), 401)
+
                 # Check request
-                prompt = request.get_json()
-                if prompt is None or len(prompt.items()) == 0:
+                if request_json is None or len(request_json.items()) == 0:
                     return (jsonify({"error": "Empty request"}), 400)
 
                 # Extract prompt data
-                module_name, conversation_data = list(prompt.items())[0]
+                module_name, conversation_data = list(request_json.items())[0]
 
                 # Check module
                 module = self.modules.get(module_name)
@@ -311,17 +366,26 @@ class ExternalAPI:
 
             Request:
                 {
-                    "module": "Name of the module from MODULES"
+                    "module": "Name of the module from MODULES",
+                    "token": "optional token if --tokens argument provided"
                 }
 
             Returns:
                 tuple[Response, Literal]: {}, 200 if requested successfully
                 or
-                {"error": "Error message"}, 400 or 500 in case of error
+                {"error": "Error message"}, 400 / 401 or 500 in case of error
             """
             try:
+                # Parse request as JSON
+                request_json = request.get_json()
+
+                # Check token
+                if self.tokens:
+                    if "token" not in request_json or request_json["token"] not in self.tokens:
+                        return (jsonify({"error": NOT_AUTHORIZED_ERROR_TEXT}), 401)
+
                 # Extract module name
-                module_name = request.get_json().get("module")
+                module_name = request_json.get("module")
                 if module_name is None:
                     return jsonify({"error": '"module" not specified'}), 400
 
@@ -359,12 +423,19 @@ class ExternalAPI:
             except Exception as e:
                 logging.warning(f"Cannot close {module_name}: {e}")
 
-    def run(self, host: str, port: int):
+    def run(self, host: str, port: int, ssl_context: Tuple[str, str] or None = None):
         """Starts API server
 
         Args:
             host (str): server host (ip)
             port (int): server port
+            ssl_context (Tuple[str, str] or None, optional): ("path/to/certificate.crt", "path/to/private.key")
+            Specify ssl_context to enable HTTPS server instead of HTTP
         """
         atexit.register(self._close_modules)
-        self.app.run(host=host, port=port, debug=False)
+        if ssl_context and len(ssl_context) == 0:
+            ssl_context = None
+        if ssl_context:
+            self.app.run(host=host, port=port, ssl_context=ssl_context, debug=False)
+        else:
+            self.app.run(host=host, port=port, debug=False)
