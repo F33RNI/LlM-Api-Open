@@ -322,7 +322,7 @@ Begins module initialization (in a separate, non-blocking thread)
     ```json
     {
         "module": "name of module from MODULES",
-        "token": "YourStrongRandomToken from --tokens argument"
+        "token": "YourStrongRandomToken from --tokens-manage argument"
     }
     ```
 
@@ -361,7 +361,7 @@ Retrieves the current status of all modules
 
     ```json
     {
-        "token": "YourStrongRandomToken from --tokens argument"
+        "token": "YourStrongRandomToken from --tokens-use argument"
     }
     ```
 
@@ -445,7 +445,7 @@ Initiates a request to the specified module and streams responses back
             "conversation_id": "Optional conversation ID (to continue existing chat) or empty for a new conversation",
             "convert_to_markdown": true or false //(Optional flag for converting response to Markdown)
         },
-        "token": "YourStrongRandomToken from --tokens argument"
+        "token": "YourStrongRandomToken from --tokens-use argument"
     }
     ```
 
@@ -460,7 +460,7 @@ Initiates a request to the specified module and streams responses back
             "style": "creative" / "balanced" / "precise",
             "convert_to_markdown": True or False
         },
-        "token": "YourStrongRandomToken from --tokens argument"
+        "token": "YourStrongRandomToken from --tokens-use argument"
     }
     ```
 
@@ -536,7 +536,7 @@ Stops the specified module's streaming response (stops yielding from `/api/ask`)
     ```json
     {
         "module": "Name of the module from MODULES",
-        "token": "YourStrongRandomToken from --tokens argument"
+        "token": "YourStrongRandomToken from --tokens-use argument"
     }
     ```
 
@@ -598,7 +598,7 @@ Clears the module's conversation history
         "chatgpt": {
             "conversation_id": "ID of conversation to delete or empty to delete the top one"
         },
-        "token": "YourStrongRandomToken from --tokens argument"
+        "token": "YourStrongRandomToken from --tokens-use argument"
     }
     ```
 
@@ -609,7 +609,7 @@ Clears the module's conversation history
         "ms_copilot": {
             "conversation_id": "ID of conversation to delete or empty to delete the top one"
         },
-        "token": "YourStrongRandomToken from --tokens argument"
+        "token": "YourStrongRandomToken from --tokens-use argument"
     }
     ```
 
@@ -655,7 +655,7 @@ Requests the module's session to close (in a separate, non-blocking thread)
     ```json
     {
         "module": "Name of the module from MODULES",
-        "token": "YourStrongRandomToken from --tokens argument"
+        "token": "YourStrongRandomToken from --tokens-manage argument"
     }
     ```
 

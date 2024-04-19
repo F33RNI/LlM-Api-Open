@@ -140,7 +140,7 @@ class ExternalAPI:
             Request:
                 {
                     "module": "name of module from MODULES",
-                    "token": "optional token if --tokens argument provided"
+                    "token": "optional token if --tokens-manage argument provided"
                 }
                 Maximum content length: 100 bytes
 
@@ -208,7 +208,7 @@ class ExternalAPI:
 
             Request:
                 {
-                    "token": "optional token if --tokens argument provided"
+                    "token": "optional token if --tokens-use argument provided"
                 }
                 Maximum content length: 100 bytes
 
@@ -265,7 +265,7 @@ class ExternalAPI:
                             "conversation_id": "Optional conversation ID (to continue existing chat) or empty for a new conversation",
                             "convert_to_markdown": true or false //(Optional flag for converting response to Markdown)
                         },
-                        "token": "optional token if --tokens argument provided"
+                        "token": "optional token if --tokens-use argument provided"
                     }
                 For Microsoft Copilot:
                     {
@@ -275,9 +275,9 @@ class ExternalAPI:
                             "conversation_id": "empty string or existing conversation ID",
                             "style": "creative" / "balanced" / "precise",
                             "convert_to_markdown": True or False,
-                            "token": "optional token if --tokens argument provided"
+                            "token": "optional token if --tokens-use argument provided"
                         },
-                        "token": "optional token if --tokens argument provided"
+                        "token": "optional token if --tokens-use argument provided"
                     }
                 Maximum content length: 3MB
 
@@ -354,7 +354,7 @@ class ExternalAPI:
             Request:
                 {
                     "module": "Name of the module from MODULES",
-                    "token": "optional token if --tokens argument provided"
+                    "token": "optional token if --tokens-use argument provided"
                 }
                 Maximum content length: 100 bytes
 
@@ -397,7 +397,7 @@ class ExternalAPI:
                     "module": {
                         "conversation_id": "ID of conversation to delete or empty to delete the top one"
                     },
-                    "token": "optional token if --tokens argument provided"
+                    "token": "optional token if --tokens-use argument provided"
                 }
                 Maximum content length: 500 bytes
 
@@ -444,7 +444,7 @@ class ExternalAPI:
             Request:
                 {
                     "module": "Name of the module from MODULES",
-                    "token": "optional token if --tokens argument provided"
+                    "token": "optional token if --tokens-manage argument provided"
                 }
                 Maximum content length: 100 bytes
 
