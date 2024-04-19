@@ -265,7 +265,10 @@ def main():
             return
 
         api = ExternalAPI(config, tokens=args.tokens)
-        api.run(args.ip, args.port, certfile=args.ssl[0], keyfile=args.ssl[1])
+        if args.ssl and len(args.ssl) == 2:
+            api.run(args.ip, args.port, certfile=args.ssl[0], keyfile=args.ssl[1])
+        else:
+            api.run(args.ip, args.port)
 
 
 if __name__ == "__main__":
