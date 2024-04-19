@@ -98,7 +98,7 @@ def parse_args() -> argparse.Namespace:
   lmao --test=chatgpt
   lmao --ip="0.0.0.0" --port=1312
   lmao --ip="0.0.0.0" --port=1312 --no-logging-init
-  lmao --ip "0.0.0.0" --port=1312 --ssl certificate.crt private.key --tokens myStrongRandomToken myStrongRandomToken2"""
+  lmao --ip "0.0.0.0" --port=1312 --ssl certificate.crt private.key --tokens-use \"tokenForMyApp\" \"tokenForMyAnotherApp\" \"ultraPrivateTokeeeeeen\" --tokens-manage \"ultraPrivateTokeeeeeen\""""
 
     parser = argparse.ArgumentParser(
         prog="lmao",

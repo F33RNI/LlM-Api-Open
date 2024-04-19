@@ -153,8 +153,9 @@ module.close(blocking=True)
 
 ```text
 $ lmao --help        
-usage: lmao [-h] [-v] [-c CONFIGS] [-t TEST] [-i IP] [-p PORT] [-s SSL [SSL ...]] [--tokens TOKENS [TOKENS ...]] [--rate-limits-default RATE_LIMITS_DEFAULT [RATE_LIMITS_DEFAULT ...]]
-            [--rate-limit-fast RATE_LIMIT_FAST] [--no-logging-init]
+usage: lmao [-h] [-v] [-c CONFIGS] [-t TEST] [-i IP] [-p PORT] [-s SSL [SSL ...]] [--tokens-use TOKENS_USE [TOKENS_USE ...]]
+            [--tokens-manage TOKENS_MANAGE [TOKENS_MANAGE ...]] [--rate-limits-default RATE_LIMITS_DEFAULT [RATE_LIMITS_DEFAULT ...]] [--rate-limit-fast RATE_LIMIT_FAST]
+            [--no-logging-init]
 
 Unofficial open APIs for popular LLMs with self-hosted redirect capability
 
@@ -168,8 +169,11 @@ options:
   -p PORT, --port PORT  API server port (Default: 1312)
   -s SSL [SSL ...], --ssl SSL [SSL ...]
                         Paths to SSL certificate and private key (ex. --ssl "path/to/certificate.crt" "path/to/private.key")
-  --tokens TOKENS [TOKENS ...]
-                        API tokens to enable authorization (ex. --tokens "abcdefg12345" "AAAAATESTtest")
+  --tokens-use TOKENS_USE [TOKENS_USE ...]
+                        API tokens to enable authorization for /status, /ask, /stop and /delete (ex. --tokens-use "tokenForMyApp" "tokenForMyAnotherApp"
+                        "ultraPrivateTokeeeeeen")
+  --tokens-manage TOKENS_MANAGE [TOKENS_MANAGE ...]
+                        API tokens to enable authorization for /init and /close (ex. --tokens-manage "ultraPrivateTokeeeeeen")
   --rate-limits-default RATE_LIMITS_DEFAULT [RATE_LIMITS_DEFAULT ...]
                         Rate limits for all API requests except /status and /stop (Default: --rate-limits-default "10/minute", "1/second")
   --rate-limit-fast RATE_LIMIT_FAST
@@ -180,7 +184,7 @@ examples:
   lmao --test=chatgpt
   lmao --ip="0.0.0.0" --port=1312
   lmao --ip="0.0.0.0" --port=1312 --no-logging-init
-  lmao --ip "0.0.0.0" --port=1312 --ssl certificate.crt private.key --tokens myStrongRandomToken myStrongRandomToken2
+  lmao --ip "0.0.0.0" --port=1312 --ssl certificate.crt private.key --tokens-use "tokenForMyApp" "tokenForMyAnotherApp" "ultraPrivateTokeeeeeen" --tokens-manage "ultraPrivateTokeeeeeen"
 ```
 
 ```shell
