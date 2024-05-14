@@ -354,6 +354,13 @@ class ChatGPTApi:
             # Wait for textarea (New chat)
             self._wait_for_prompt_textarea()
 
+            # Wait
+            logging.info("Waiting 5 extra seconds")
+            time.sleep(5)
+
+            # Close welcome back dialogue
+            self._welcome_back_resolve()
+
             # Prevent "element not interactable" error
             self._remove_new_chat_button()
 
@@ -450,14 +457,26 @@ class ChatGPTApi:
             # Paste -> click -> move cursor to the end -> add space -> erase space
             logging.info("Pasting prompt into textarea")
             self.driver.execute_script(_TYPE_INTO_TEXTAREA, prompt_textarea, prompt)
+            time.sleep(0.1)
             prompt_textarea.click()
+            time.sleep(0.1)
             self.driver.execute_script(_MOVE_CURSOR_TEXTAREA, prompt_textarea)
+            time.sleep(0.1)
             prompt_textarea.send_keys(Keys.SPACE)
+            time.sleep(0.1)
             prompt_textarea.send_keys(Keys.BACKSPACE)
+            time.sleep(0.1)
 
             # Click send prompt button
             logging.info("Clinking on send-button")
-            self.driver.find_element(By.XPATH, "//*[@data-testid='send-button']").click()
+            send_buttons_old = self.driver.find_elements(By.XPATH, "//*[@data-testid='send-button']")
+            if len(send_buttons_old) != 0:
+                send_buttons_old[0].click()
+            else:
+                self.driver.find_element(
+                    By.XPATH,
+                    '//button[@class="mb-1 mr-1 flex h-8 w-8 items-center justify-center rounded-full bg-black text-white transition-colors hover:opacity-70 focus-visible:outline-none focus-visible:outline-black disabled:bg-[#D7D7D7] disabled:text-[#f4f4f4] disabled:hover:opacity-100 dark:bg-white dark:text-black dark:focus-visible:outline-white disabled:dark:bg-token-text-quaternary dark:disabled:text-token-main-surface-secondary"]',
+                ).click()
 
             # Wait until assistant starts responding
             logging.info("Waiting for assistant to start responding")
@@ -548,7 +567,7 @@ class ChatGPTApi:
                     finished = False
                 elif class_name.startswith("markdown"):
                     finished = True
-                elif not class_name.startswith("result-thinking"):
+                elif "result-thinking" not in class_name:
                     raise Exception(f"Unknown response type: {class_name}")
 
                 response_parsed = {"finished": finished}
@@ -634,6 +653,9 @@ class ChatGPTApi:
             # Pause auto-refresher
             self._refresher_pause_resume(pause=True)
 
+            # Close welcome back dialogue
+            self._welcome_back_resolve()
+
             # Prevent "element not interactable" error
             self._remove_new_chat_button()
 
@@ -651,7 +673,7 @@ class ChatGPTApi:
             action_chains = ActionChains(self.driver)
             time.sleep(0.1)
             logging.info("Moving to the a tag")
-            action_chains.move_to_element(chat_a_tag).perform()
+            action_chains.move_to_element(chat_a_tag).click().perform()
             time.sleep(0.5)
             logging.info("Clicking on expand button")
             chat_expand_button.click()
@@ -792,8 +814,33 @@ class ChatGPTApi:
         raw = "true" if raw else "false"
         return self.driver.execute_script(f"return conversationGetLastMessage({raw});")
 
+    def _welcome_back_resolve(self) -> None:
+        """Clicks on "Stay logged out" in welcome back dialogue"""
+        welcome_back_dialogues = self.driver.find_elements(By.XPATH, "//div[@role='dialog' and @id='radix-:r7:']")
+        if len(welcome_back_dialogues) == 0:
+            return
+        welcome_back_dialogue = welcome_back_dialogues[0]
+        try:
+            logging.info('Clicking on "Stay logged out"')
+            welcome_back_dialogue.find_element(By.XPATH, "//a[starts-with(@class, 'cursor-pointer')]").click()
+            logging.info("Waiting extra 5 seconds")
+            time.sleep(5)
+        except Exception as e:
+            logging.warning(f'Unable to clock on "Stay logged out": {e}')
+
     def _remove_new_chat_button(self) -> None:
         """Removes "New chat" button because it intercepts side chat buttons"""
+        # Expand histories
+        expand_buttons = self.driver.find_elements(
+            By.XPATH,
+            '//button[@class="h-10 rounded-lg px-2.5 text-token-text-secondary focus-visible:outline-0 hover:bg-token-main-surface-secondary focus-visible:bg-token-main-surface-secondary"]',
+        )
+        if len(expand_buttons) != 0:
+            logging.info("Expanding histories")
+            expand_buttons[0].click()
+            time.sleep(1)
+
+        # Old version
         sticky_divs = self.driver.find_elements(By.XPATH, "//div[starts-with(@class, 'sticky')]")
         for sticky_div in sticky_divs:
             try:
@@ -803,6 +850,13 @@ class ChatGPTApi:
                     break
             except:
                 pass
+
+        # New version
+        try:
+            self.driver.execute_script("")
+            logging.info('"New chat" button removed')
+        except:
+            pass
 
     def _wait_for_prompt_textarea(self) -> None:
         """Waits for prompt textarea to become visible and 1 extra second to make sure it's loaded and clickable"""

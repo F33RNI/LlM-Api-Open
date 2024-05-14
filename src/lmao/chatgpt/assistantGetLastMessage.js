@@ -108,7 +108,7 @@ function conversationGetLastMessage(raw) {
             const assistantMessageID = assistantMessage.getAttribute("data-message-id");
 
             // Extract actual response parent
-            const responseContainer = assistantMessage.firstChild.cloneNode(true);
+            const responseContainer = assistantMessage.firstChild.firstChild.cloneNode(true);
 
             // result-thinking or result-streaming or markdown
             const responseContainerClassName = responseContainer.className;
