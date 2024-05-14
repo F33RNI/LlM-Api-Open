@@ -255,12 +255,13 @@ class ChatGPTApi:
         try:
             # Load cookies
             cookies_file = self.config.get("cookies_file")
-            logging.info(f"Loading cookies from {cookies_file}")
-            with open(cookies_file, "r", encoding="utf-8") as file:
-                self._cookies = json.load(file)
-                if self._cookies is None or not isinstance(self._cookies, list) or len(self._cookies) == 0:
-                    raise Exception("Empty or wrong cookies file")
-                logging.info(f"Loaded {len(self._cookies)} cookies")
+            if cookies_file and os.path.exists(cookies_file):
+                logging.info(f"Loading cookies from {cookies_file}")
+                with open(cookies_file, "r", encoding="utf-8") as file:
+                    self._cookies = json.load(file)
+                    if self._cookies is None or not isinstance(self._cookies, list) or len(self._cookies) == 0:
+                        raise Exception("Empty or wrong cookies file")
+                    logging.info(f"Loaded {len(self._cookies)} cookies")
 
             # Set driver options
             logging.info("Adding chrome options")

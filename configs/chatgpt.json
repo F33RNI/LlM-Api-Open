@@ -1,7 +1,7 @@
 {
     "__comment01__": "ChatGPT module config file <https://github.com/F33RNI/LlM-Api-Open>",
 
-    "__comment02__": "File for loading and saving cookies. Install cookie editor extension, for example:",
+    "__comment02__": "File for loading and saving cookies. (Possibly not required anymore) Install editor extension:",
     "__comment03__": "<https://chrome.google.com/webstore/detail/cookie-editor/hlkenndednhfkekhgcdicdfddnkalmdm>",
     "__comment04__": "Go to <https://chat.openai.com/> and ask ChatGPT about something",
     "__comment05__": "Open the extension, click Export on the bottom right, then Export as JSON",
@@ -16,7 +16,7 @@
     "version_main_manual": null,
 
     "__comment10__": "Path to driver executable to pass as driver_executable_path argument or empty for auto",
-    "__comment11__": "It's recommended ot leave this empty",
+    "__comment11__": "It's recommended to leave this empty",
     "driver_executable_path": "",
 
     "__comment12__": "Set to true to enable proxy",
