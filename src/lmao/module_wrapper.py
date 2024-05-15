@@ -197,7 +197,7 @@ class ModuleWrapper:
 
         # Clear status back to IDLE
         finally:
-            self.status = STATUS_IDLE
+            self.status = STATUS_IDLE if self._module_class is not None else STATUS_NOT_INITIALIZED
 
     def response_stop(self) -> None:
         """Wrapper for response_stop() function
@@ -211,7 +211,7 @@ class ModuleWrapper:
 
         # Clear status back to IDLE
         finally:
-            self.status = STATUS_IDLE
+            self.status = STATUS_IDLE if self._module_class is not None else STATUS_NOT_INITIALIZED
 
     def delete_conversation(self, conversation: Dict) -> None:
         """Wrapper for conversation_delete() function
@@ -231,4 +231,4 @@ class ModuleWrapper:
 
         # Clear status back to IDLE
         finally:
-            self.status = STATUS_IDLE
+            self.status = STATUS_IDLE if self._module_class is not None else STATUS_NOT_INITIALIZED
