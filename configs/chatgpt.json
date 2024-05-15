@@ -52,6 +52,15 @@
         "--auto-open-devtools-for-tabs",
         "--dns-prefetch-disable",
         "--disable-gpu",
+        "--disable-dev-shm-usage",
+        "--disable-renderer-backgrounding",
+        "--disable-background-timer-throttling",
+        "--disable-backgrounding-occluded-windows",
+        "--disable-client-side-phishing-detection",
+        "--disable-crash-reporter",
+        "--disable-oopr-debug-crash-dump",
+        "--no-crash-upload",
+        "--disable-low-res-tiling",
         "--window-size=1920x960"
     ],
 
