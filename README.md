@@ -725,3 +725,12 @@ $ lmao --configs "configs" --ip "0.0.0.0" --port "1312" --ssl certificate.crt pr
 2024-04-19 02:07:02 INFO     Press CTRL+C to quit
 ...
 ```
+
+----------
+
+## 🐛 How to fix `Failed to establish a new connection` when using multiple modules
+
+1. Open `venv/lib/python3.XX/site-packages/undetected_chromedriver/patcher.py`
+2. Add `import secrets` to the imports
+3. In `def __init__` change `prefix = "undetected"` to `prefix = f"undetected{secrets.token_hex(4)}"`
+4. Save file and reload LMAO
