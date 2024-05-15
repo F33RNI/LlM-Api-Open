@@ -415,7 +415,7 @@ function actionHandle(action) {
             const lastMessageGroupBot = getLastMessageGroupBot();
             const cibMessages = lastMessageGroupBot.shadowRoot.querySelectorAll("cib-message");
             for (const cibMessage of cibMessages) {
-                if (cibMessage.getAttribute("content") !== "IMAGE") {
+                if (cibMessage.hasAttribute("content") && cibMessage.getAttribute("content") !== "IMAGE") {
                     continue;
                 }
                 const cibMessageIframe = cibMessage.shadowRoot.querySelector("cib-shared > iframe");
@@ -423,7 +423,8 @@ function actionHandle(action) {
                     continue;
                 }
                 const iframeDocument = cibMessageIframe.contentWindow.document;
-                if (iframeDocument.querySelector("#giloader").getAttribute("style") === "display: flex;") {
+                const giLoader = iframeDocument.querySelector("#giloader");
+                if (giLoader && giLoader.getAttribute("style") === "display: flex;") {
                     return false;
                 }
             }
