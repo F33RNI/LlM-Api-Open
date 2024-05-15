@@ -87,7 +87,7 @@ return searchBox;
 # JS script that sets conversation style (WORKS ONLY ON NEW CONVERSATIONS). Pass 1 / 2 / 3 as argument
 # (1 - Creative, 2 - Balanced, 3 - Precise)
 _SET_STYLE = """
-document.querySelector("#b_sydConvCont > cib-serp").shadowRoot.querySelector("#cib-conversation-main").shadowRoot.querySelector("#cib-chat-main > div > cib-welcome-container").shadowRoot.querySelector("div.controls > cib-tone-selector").shadowRoot.querySelector("#tone-options > li:nth-child(" + arguments[0] + ") > button").click();
+document.querySelector("#b_sydConvCont > cib-serp").shadowRoot.querySelector("#cib-conversation-main").shadowRoot.querySelector("#cib-chat-main > cib-welcome-container").shadowRoot.querySelector("div.controls > cib-tone-selector").shadowRoot.querySelector("#tone-options > li:nth-child(" + arguments[2] + ") > button").click();
 """
 
 # JS script that returns "Stop responding" button
