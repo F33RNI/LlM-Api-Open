@@ -305,6 +305,7 @@ class MSCopilotApi:
                 options=chrome_options,
                 headless=headless,
                 enable_cdp_events=True,
+                user_multi_procs=True,
                 **kwargs,
             )
 
