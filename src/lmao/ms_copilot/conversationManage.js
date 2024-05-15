@@ -66,14 +66,41 @@ function searchCibThreadContainer(conversationID, strictEqual) {
 }
 
 /**
- * Focuses on chat container and presses rename button
+ * Focuses on chat container -> waits 100ms -> presses rename button -> waits 500ms
+ * -> renames and confirms -> return the same conversation ID
+ * @param {string} conversationID new unique chat name
  */
-function startRenameMode() {
+function startRenameMode(conversationID) {
     const cibThreadContainer = document.querySelector("#b_sydConvCont > cib-serp").shadowRoot.querySelector("#cib-conversation-main > cib-side-panel").shadowRoot.querySelector("#cib-threads-container > cib-thread:nth-child(1)").shadowRoot;
     const loadChatBtn = cibThreadContainer.querySelector("div > div > button");
     loadChatBtn.focus();
-    const renameBtn = cibThreadContainer.querySelector("div > div > div.controls > button.edit.icon-button");
-    renameBtn.click();
+
+    setTimeout(function () {
+        try {
+            const cibThreadContainer_ = document.querySelector("#b_sydConvCont > cib-serp").shadowRoot.querySelector("#cib-conversation-main > cib-side-panel").shadowRoot.querySelector("#cib-threads-container > cib-thread:nth-child(1)").shadowRoot;
+            const renameBtn = cibThreadContainer_.querySelector("div > div > div.controls > button.edit.icon-button");
+            renameBtn.click();
+
+            setTimeout(function () {
+                try {
+                    renameChatAndConfirm(conversationID);
+                    callback("" + conversationID);
+                }
+
+                // Log and return error as string
+                catch (error) {
+                    console.error(error);
+                    callback("" + error);
+                }
+            }, 500);
+        }
+
+        // Log and return error as string
+        catch (error) {
+            console.error(error);
+            callback("" + error);
+        }
+    }, 100);
 }
 
 /**
@@ -131,12 +158,7 @@ try {
 
     // Rename conversation
     else if (action === "rename") {
-        // Enter edit mode -> wait 500ms -> rename and confirm -> return the same conversation ID
-        startRenameMode();
-        setTimeout(function () {
-            renameChatAndConfirm(conversationID);
-            callback("" + conversationID);
-        }, 500);
+        startRenameMode(conversationID);
     }
 }
 
