@@ -1,5 +1,5 @@
 selenium>=4.18.1
-git+https://github.com/ultrafunkamsterdam/undetected-chromedriver@fix-multiple-instance
+undetected-chromedriver>=3.5.5
 beautifulsoup4>=4.12.3
 markdownify>=0.11.6
 Flask>=3,<4
