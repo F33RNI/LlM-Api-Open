@@ -240,7 +240,7 @@ class ExternalAPI:
                                 "module": module_name,
                                 "status_code": module.status,
                                 "status_name": STATUS_TO_STR[module.status],
-                                "error": module.error if module.error is not None else "",
+                                "error": str(module.error) if module.error is not None else "",
                             }
                         )
                     except Exception as e:
