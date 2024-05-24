@@ -830,8 +830,7 @@ class ChatGPTApi:
         try:
             logging.info('Clicking on "Stay logged out"')
             welcome_back_dialogue.find_element(By.XPATH, "//a[starts-with(@class, 'cursor-pointer')]").click()
-            logging.info("Waiting extra 5 seconds")
-            time.sleep(5)
+            time.sleep(1)
         except Exception as e:
             logging.warning(f'Unable to clock on "Stay logged out": {e}')
 
