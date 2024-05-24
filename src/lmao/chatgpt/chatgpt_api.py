@@ -325,7 +325,6 @@ class ChatGPTApi:
                 options=chrome_options,
                 headless=headless,
                 enable_cdp_events=True,
-                user_multi_procs=True,
                 **kwargs,
             )
             self.driver.set_page_load_timeout(_WAIT_TIMEOUT)
