@@ -22,28 +22,28 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+import gc
 import imghdr
 import json
 import logging
 import os
 import subprocess
 import tempfile
-import time
 import threading
+import time
+import uuid
 from collections.abc import Generator
 from typing import Any, Dict
-import uuid
 
-from markdownify import markdownify
 import undetected_chromedriver
+from markdownify import markdownify
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
-from selenium.common.exceptions import TimeoutException
 
 from lmao.ms_copilot.proxy_extension import ProxyExtension
-
 
 # JS script that injects "large" JS file into <head></head>. Pass script's content as first argument
 _INJECT_JS = """
@@ -350,6 +350,9 @@ class MSCopilotApi:
             except Exception:
                 pass
             self.driver = None
+
+            # Cleanup
+            gc.collect()
 
             # Raise exception after
             raise e
@@ -778,6 +781,9 @@ class MSCopilotApi:
         time.sleep(1)
         self.driver = None
         logging.info("Browser closed")
+
+        # Cleanup
+        gc.collect()
 
     def cookies_save(self) -> None:
         """Retrieves cookies from current session and updates existing one and save them to file"""
